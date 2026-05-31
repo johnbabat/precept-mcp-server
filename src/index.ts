@@ -54,7 +54,9 @@ function isRedirectUriAllowed(redirectUri: string): boolean {
   const allowedPatternsRaw =
     process.env.ALLOWED_REDIRECT_DOMAINS ||
     "claude.ai,chatgpt.com,localhost,127.0.0.1";
-  const allowedDomains = allowedPatternsRaw.split(",").map((d) => d.trim().toLowerCase());
+  const allowedDomains = allowedPatternsRaw
+    .split(",")
+    .map((d) => d.trim().toLowerCase());
 
   try {
     const parsed = new URL(redirectUri);
@@ -444,12 +446,17 @@ function renderAuthorizeHtml(params: {
   }
 
   // All user-controlled values are HTML-escaped to prevent XSS
-  return AUTHORIZE_HTML_TEMPLATE
-    .replace("{{client_id}}", escapeHtml(params.client_id || ""))
+  return AUTHORIZE_HTML_TEMPLATE.replace(
+    "{{client_id}}",
+    escapeHtml(params.client_id || ""),
+  )
     .replace("{{redirect_uri}}", escapeHtml(params.redirect_uri || ""))
     .replace("{{state}}", escapeHtml(params.state || ""))
     .replace("{{code_challenge}}", escapeHtml(params.code_challenge || ""))
-    .replace("{{code_challenge_method}}", escapeHtml(params.code_challenge_method || ""))
+    .replace(
+      "{{code_challenge_method}}",
+      escapeHtml(params.code_challenge_method || ""),
+    )
     .replace("{{csrf_token}}", escapeHtml(params.csrf_token || ""))
     .replace("{{apiKey}}", escapeHtml(params.apiKey || ""))
     .replace("{{error}}", errorHtml);
@@ -458,7 +465,8 @@ function renderAuthorizeHtml(params: {
 // Validate API Key using Precept API endpoint
 async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
-    const preceptApiUrl = process.env.PRECEPT_API_URL || "https://api.preceptai.co.uk";
+    const preceptApiUrl =
+      process.env.PRECEPT_API_URL || "https://api.preceptai.co.uk";
     await axios.get(`${preceptApiUrl}/v1/jobs`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -467,7 +475,10 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
     });
     return true;
   } catch (error: any) {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    if (
+      error.response &&
+      (error.response.status === 401 || error.response.status === 403)
+    ) {
       return false;
     }
     // For other connection issues, allow proceeding so that temporary downtime doesn't brick setup
@@ -482,13 +493,24 @@ async function main() {
     app.use(express.urlencoded({ extended: true }));
 
     const allowedHostsRaw = process.env.ALLOWED_HOSTS || "localhost,127.0.0.1";
-    const allowedHosts = allowedHostsRaw.split(",").map((h) => h.trim());
+    const allowedHosts = allowedHostsRaw.split(",").map((h) => {
+      let cleaned = h.trim().toLowerCase();
+      // Auto-strip schemes if user accidentally configured them (e.g. https://domain.com)
+      cleaned = cleaned.replace(/^https?:\/\//, "");
+      // Auto-strip any trailing path segments
+      cleaned = cleaned.split("/")[0];
+      // Auto-strip any ports
+      cleaned = cleaned.split(":")[0];
+      return cleaned;
+    });
+
 
     // JWT key setup
-    const jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
+    const jwtSecret =
+      process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
     if (!process.env.JWT_SECRET) {
       console.warn(
-        "WARNING: JWT_SECRET environment variable is not set. A random secret has been generated, but active tokens will be invalidated upon server restart."
+        "WARNING: JWT_SECRET environment variable is not set. A random secret has been generated, but active tokens will be invalidated upon server restart.",
       );
     }
 
@@ -497,14 +519,14 @@ async function main() {
     if (noSecurity) {
       if (process.env.NODE_ENV === "production") {
         console.error(
-          "FATAL: NO_SECURITY=true is not allowed in production. Refusing to start."
+          "FATAL: NO_SECURITY=true is not allowed in production. Refusing to start.",
         );
         process.exit(1);
       }
       console.warn(
         "⚠️  WARNING: NO_SECURITY=true — OAuth is DISABLED. " +
-        "All /mcp requests will use the server-level PRECEPT_API_KEY. " +
-        "This should ONLY be used for local development."
+          "All /mcp requests will use the server-level PRECEPT_API_KEY. " +
+          "This should ONLY be used for local development.",
       );
     }
 
@@ -514,7 +536,7 @@ async function main() {
       : new MemoryTokenStore();
 
     // Token lifetimes
-    const ACCESS_TOKEN_TTL = 60 * 60;           // 1 hour
+    const ACCESS_TOKEN_TTL = 60 * 60; // 1 hour
     const REFRESH_TOKEN_TTL = 90 * 24 * 60 * 60; // 90 days
 
     // ──────────────────────────────────────────
@@ -531,18 +553,28 @@ async function main() {
       });
     });
 
-    app.get(["/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"], (req, res) => {
-      const baseUrl = getBaseUrl(req);
-      res.json({
-        issuer: baseUrl,
-        authorization_endpoint: `${baseUrl}/authorize`,
-        token_endpoint: `${baseUrl}/token`,
-        response_types_supported: ["code"],
-        grant_types_supported: ["authorization_code", "refresh_token"],
-        code_challenge_methods_supported: ["S256"],
-        token_endpoint_auth_methods_supported: ["none", "client_secret_post", "client_secret_basic"],
-      });
-    });
+    app.get(
+      [
+        "/.well-known/oauth-authorization-server",
+        "/.well-known/openid-configuration",
+      ],
+      (req, res) => {
+        const baseUrl = getBaseUrl(req);
+        res.json({
+          issuer: baseUrl,
+          authorization_endpoint: `${baseUrl}/authorize`,
+          token_endpoint: `${baseUrl}/token`,
+          response_types_supported: ["code"],
+          grant_types_supported: ["authorization_code", "refresh_token"],
+          code_challenge_methods_supported: ["S256"],
+          token_endpoint_auth_methods_supported: [
+            "none",
+            "client_secret_post",
+            "client_secret_basic",
+          ],
+        });
+      },
+    );
 
     // ──────────────────────────────────────────
     // GET /authorize (Render UI)
@@ -557,25 +589,40 @@ async function main() {
         code_challenge_method,
       } = req.query;
 
+      console.log(`[OAuth /authorize GET] Initiating auth flow. client_id=${client_id}, redirect_uri=${redirect_uri}`);
+
       if (!client_id || !redirect_uri || !state || !code_challenge) {
-        res.status(400).send("Bad Request: Missing OAuth parameters client_id, redirect_uri, state, or code_challenge");
+        console.warn("[OAuth /authorize GET] Missing required OAuth parameters");
+        res
+          .status(400)
+          .send(
+            "Bad Request: Missing OAuth parameters client_id, redirect_uri, state, or code_challenge",
+          );
         return;
       }
 
       if (response_type !== "code") {
-        res.status(400).send("Bad Request: Only response_type='code' is supported");
+        res
+          .status(400)
+          .send("Bad Request: Only response_type='code' is supported");
         return;
       }
 
       if (code_challenge_method && code_challenge_method !== "S256") {
-        res.status(400).send("Bad Request: Only S256 code challenge method is supported");
+        res
+          .status(400)
+          .send("Bad Request: Only S256 code challenge method is supported");
         return;
       }
 
       // Validate redirect_uri against allowlist
       const redirectUriStr = String(redirect_uri);
       if (!isRedirectUriAllowed(redirectUriStr)) {
-        res.status(400).send("Bad Request: redirect_uri is not allowed. Check ALLOWED_REDIRECT_DOMAINS configuration.");
+        res
+          .status(400)
+          .send(
+            "Bad Request: redirect_uri is not allowed. Check ALLOWED_REDIRECT_DOMAINS configuration.",
+          );
         return;
       }
 
@@ -590,7 +637,7 @@ async function main() {
           code_challenge: String(code_challenge),
           code_challenge_method: String(code_challenge_method || "S256"),
           csrf_token: csrfToken,
-        })
+        }),
       );
     });
 
@@ -608,25 +655,35 @@ async function main() {
         _csrf,
       } = req.body;
 
+      console.log(`[OAuth /authorize POST] Form submitted. client_id=${client_id}`);
+
       if (!client_id || !redirect_uri || !state || !code_challenge || !apiKey) {
+        console.warn("[OAuth /authorize POST] Missing required form fields");
         res.status(400).send("Bad Request: Missing required form parameters");
         return;
       }
 
       // Verify CSRF token
       if (!_csrf || !verifyCsrfToken(_csrf, jwtSecret)) {
-        res.status(403).send("Forbidden: Invalid or expired CSRF token. Please reload the page and try again.");
+        console.warn("[OAuth /authorize POST] CSRF validation failed");
+        res
+          .status(403)
+          .send(
+            "Forbidden: Invalid or expired CSRF token. Please reload the page and try again.",
+          );
         return;
       }
 
       // Re-validate redirect_uri on the POST side too
       if (!isRedirectUriAllowed(redirect_uri)) {
+        console.warn(`[OAuth /authorize POST] redirect_uri is not allowed: ${redirect_uri}`);
         res.status(400).send("Bad Request: redirect_uri is not allowed.");
         return;
       }
 
       const isValid = await validateApiKey(apiKey);
       if (!isValid) {
+        console.warn("[OAuth /authorize POST] Precept API Key validation failed");
         // Re-generate CSRF token for the retry form
         const csrfToken = generateCsrfToken(jwtSecret);
         res.send(
@@ -638,14 +695,17 @@ async function main() {
             code_challenge_method,
             csrf_token: csrfToken,
             apiKey,
-            error: "Invalid Precept API Key. Please double check and try again.",
-          })
+            error:
+              "Invalid Precept API Key. Please double check and try again.",
+          }),
         );
         return;
       }
 
+      console.log("[OAuth /authorize POST] Precept API Key is valid. Issuing auth code.");
       // Generate a temporary auth code (short-lived)
       const authCode = crypto.randomBytes(24).toString("hex");
+
 
       // Encrypt the API key before storing (so it's never plaintext in Redis/memory)
       const encryptedApiKey = encrypt(apiKey, jwtSecret);
@@ -659,7 +719,7 @@ async function main() {
           clientId: client_id,
           redirectUri: redirect_uri,
         },
-        300 // 5 minutes TTL
+        300, // 5 minutes TTL
       );
 
       // Redirect the user back to the client callback URL
@@ -670,53 +730,104 @@ async function main() {
       res.redirect(safeRedirectUri.toString());
     });
 
-    // ──────────────────────────────────────────
-    // POST /token (Token Exchange)
-    // ──────────────────────────────────────────
     app.post("/token", async (req, res) => {
       const grantType = req.body.grant_type || req.query.grant_type;
 
+      console.log(`[OAuth /token] Request received. grant_type=${grantType}`);
+
       if (grantType === "authorization_code") {
-        const { client_id, redirect_uri, code, code_verifier } = req.body;
+        let client_id = req.body.client_id;
+        const redirect_uri = req.body.redirect_uri;
+        const { code, code_verifier } = req.body;
+
+        // Support client_secret_basic (Basic Auth header)
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith("Basic ")) {
+          try {
+            const credentials = Buffer.from(authHeader.split(" ")[1], "base64").toString("utf-8");
+            const parts = credentials.split(":");
+            if (parts[0]) {
+              client_id = parts[0];
+              console.log("[OAuth /token] Extracted client_id from Basic Auth header:", client_id);
+            }
+          } catch (e) {
+            console.error("[OAuth /token] Failed to parse Basic Auth header:", e);
+          }
+        }
 
         if (!code || !code_verifier) {
-          res.status(400).json({ error: "invalid_request", error_description: "Missing code or code_verifier" });
+          console.warn("[OAuth /token] Missing code or code_verifier in request");
+          res
+            .status(400)
+            .json({
+              error: "invalid_request",
+              error_description: "Missing code or code_verifier",
+            });
           return;
         }
 
         const data = await tokenStore.getAndRemoveAuthCode(code);
+
         if (!data) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired authorization code" });
+          console.warn("[OAuth /token] Authorization code not found (expired or invalid)");
+          res
+            .status(400)
+            .json({
+              error: "invalid_grant",
+              error_description: "Invalid or expired authorization code",
+            });
           return;
         }
 
-        // client_id and redirect_uri are MANDATORY checks (OAuth 2.1 spec)
-        if (!client_id || data.clientId !== client_id) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Missing or mismatched client_id" });
+        // Validate client_id if present
+        if (client_id && data.clientId !== client_id) {
+          console.warn(`[OAuth /token] Mismatched client_id: expected ${data.clientId}, got ${client_id}`);
+          res
+            .status(400)
+            .json({
+              error: "invalid_grant",
+              error_description: "Mismatched client_id",
+            });
           return;
         }
 
-        if (!redirect_uri || data.redirectUri !== redirect_uri) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Missing or mismatched redirect_uri" });
+        // Validate redirect_uri if present
+        if (redirect_uri && data.redirectUri !== redirect_uri) {
+          console.warn(`[OAuth /token] Mismatched redirect_uri: expected ${data.redirectUri}, got ${redirect_uri}`);
+          res
+            .status(400)
+            .json({
+              error: "invalid_grant",
+              error_description: "Mismatched redirect_uri",
+            });
           return;
         }
+
 
         // Verify PKCE
         const calculatedChallenge = generateCodeChallenge(code_verifier);
         if (calculatedChallenge !== data.codeChallenge) {
-          res.status(400).json({ error: "invalid_grant", error_description: "PKCE verification failed" });
+          console.warn("[OAuth /token] PKCE verification failed");
+          res
+            .status(400)
+            .json({
+              error: "invalid_grant",
+              error_description: "PKCE verification failed",
+            });
           return;
         }
 
+        console.log("[OAuth /token] Code exchanged successfully. Generating token payload.");
         // The API key is already encrypted in the token store — carry it forward into the JWT
         const accessToken = signJwt(
+
           {
             sub: data.clientId,
             apiKey: data.encryptedApiKey,
             client_id: data.clientId,
             exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL,
           },
-          jwtSecret
+          jwtSecret,
         );
 
         const refreshToken = signJwt(
@@ -726,7 +837,7 @@ async function main() {
             client_id: data.clientId,
             exp: Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL,
           },
-          jwtSecret
+          jwtSecret,
         );
 
         res.json({
@@ -739,13 +850,23 @@ async function main() {
         const { refresh_token } = req.body;
 
         if (!refresh_token) {
-          res.status(400).json({ error: "invalid_request", error_description: "Missing refresh_token" });
+          res
+            .status(400)
+            .json({
+              error: "invalid_request",
+              error_description: "Missing refresh_token",
+            });
           return;
         }
 
         const payload = verifyJwt(refresh_token, jwtSecret);
         if (!payload || !payload.apiKey) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired refresh token" });
+          res
+            .status(400)
+            .json({
+              error: "invalid_grant",
+              error_description: "Invalid or expired refresh token",
+            });
           return;
         }
 
@@ -757,7 +878,7 @@ async function main() {
             client_id: payload.client_id,
             exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL,
           },
-          jwtSecret
+          jwtSecret,
         );
 
         const newRefreshToken = signJwt(
@@ -767,7 +888,7 @@ async function main() {
             client_id: payload.client_id,
             exp: Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL,
           },
-          jwtSecret
+          jwtSecret,
         );
 
         res.json({
@@ -777,7 +898,13 @@ async function main() {
           refresh_token: newRefreshToken,
         });
       } else {
-        res.status(400).json({ error: "unsupported_grant_type", error_description: "Only authorization_code and refresh_token are supported" });
+        res
+          .status(400)
+          .json({
+            error: "unsupported_grant_type",
+            error_description:
+              "Only authorization_code and refresh_token are supported",
+          });
       }
     });
 
@@ -795,11 +922,14 @@ async function main() {
 
     // Expose MCP endpoint (protected by Bearer OAuth checks)
     app.post("/mcp", async (req, res) => {
+      console.log(`[MCP] Request received. method=${req.body?.method}, host=${req.headers.host}`);
+
       // DNS Rebinding / Host validation
       const hostHeader = req.headers.host;
       if (hostHeader) {
         const host = hostHeader.split(":")[0];
         if (!allowedHosts.includes(host) && !allowedHosts.includes("*")) {
+          console.warn(`[MCP] Host header check failed. host=${host}, allowedHosts=${JSON.stringify(allowedHosts)}`);
           res.status(403).send("Forbidden: Invalid host header");
           return;
         }
@@ -810,33 +940,66 @@ async function main() {
       if (!noSecurity) {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
+          console.warn("[MCP] Unauthorized: Missing or invalid Bearer token");
           const baseUrl = getBaseUrl(req);
-          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`);
-          res.status(401).json({ error: "invalid_token", error_description: "Missing or invalid authorization token" });
+          res.setHeader(
+            "WWW-Authenticate",
+            `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`,
+          );
+          res
+            .status(401)
+            .json({
+              error: "invalid_token",
+              error_description: "Missing or invalid authorization token",
+            });
           return;
         }
 
         const token = authHeader.split(" ")[1];
         if (!token) {
-          res.status(401).json({ error: "invalid_token", error_description: "Malformed Bearer token" });
+          console.warn("[MCP] Unauthorized: Malformed Bearer token");
+          res
+            .status(401)
+            .json({
+              error: "invalid_token",
+              error_description: "Malformed Bearer token",
+            });
           return;
         }
 
         const payload = verifyJwt(token, jwtSecret);
         if (!payload || !payload.apiKey) {
+          console.warn("[MCP] Unauthorized: Invalid or expired JWT payload");
           const baseUrl = getBaseUrl(req);
-          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`);
-          res.status(401).json({ error: "invalid_token", error_description: "Invalid or expired authorization token" });
+          res.setHeader(
+            "WWW-Authenticate",
+            `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`,
+          );
+          res
+            .status(401)
+            .json({
+              error: "invalid_token",
+              error_description: "Invalid or expired authorization token",
+            });
           return;
         }
 
         try {
           apiKey = decrypt(payload.apiKey, jwtSecret);
         } catch (err) {
-          res.status(401).json({ error: "invalid_token", error_description: "Failed to decrypt API Key" });
+          console.error("[MCP] Failed to decrypt API key from token:", err);
+          res
+            .status(401)
+            .json({
+              error: "invalid_token",
+              error_description: "Failed to decrypt API Key",
+            });
           return;
         }
       }
+
+      console.log(`[MCP] Request authorized. Executing MCP method=${req.body?.method}`);
+
 
       // Ensure the Accept header includes text/event-stream to prevent 406 Not Acceptable
       // errors from strict validation in StreamableHTTPServerTransport
