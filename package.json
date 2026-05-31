@@ -1,0 +1,50 @@
+{
+  "name": "@preceptai/mcp-server",
+  "version": "1.0.2",
+  "description": "Precept MCP Server for lead and company B2B intelligence",
+  "type": "module",
+  "bin": {
+    "precept-mcp": "./build/index.js"
+  },
+  "files": [
+    "build",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js"
+  },
+  "author": "Precept AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preceptai/precept-mcp-server.git"
+  },
+  "keywords": [
+    "mcp",
+    "precept",
+    "preceptai",
+    "sales",
+    "leads",
+    "enrichment",
+    "model-context-protocol",
+    "company data",
+    "employee data",
+    "email data",
+    "phone data",
+    "contact data"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.11.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
