@@ -908,21 +908,20 @@ async function main() {
       }
     });
 
-    // Initialize streamable HTTP transport
-    // NOTE: Using a single stateless transport (sessionIdGenerator = undefined).
-    // API key isolation is handled by AsyncLocalStorage at the request level.
-    // If stateful MCP features (sampling, notifications) are needed in the future,
-    // a per-session transport architecture should be adopted instead.
+    // Initialize streamable HTTP transport in stateful SSE mode
+    // (Required by Claude.ai and Claude Desktop custom connectors)
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // stateless server
+      sessionIdGenerator: () => crypto.randomUUID(),
     });
+
 
     // Connect server to transport
     await server.connect(transport);
 
-    // Expose MCP endpoint (protected by Bearer OAuth checks)
-    app.post("/mcp", async (req, res) => {
-      console.log(`[MCP] Request received. method=${req.body?.method}, host=${req.headers.host}`);
+    // Expose MCP endpoint (handles GET for SSE stream, POST/DELETE for messages)
+    app.all("/mcp", async (req, res) => {
+      console.log(`[MCP] Request received. method=${req.body?.method}, type=${req.method}, host=${req.headers.host}`);
+
 
       // DNS Rebinding / Host validation
       const hostHeader = req.headers.host;
