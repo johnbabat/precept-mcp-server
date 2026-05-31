@@ -3,7 +3,7 @@ import { z } from "zod";
 import axios, { AxiosError } from "axios";
 import dotenv from "dotenv";
 
-import { apiKeyStorage } from "./index.js";
+import { apiKeyStorage } from "./context.js";
 
 dotenv.config();
 
@@ -12,7 +12,8 @@ const PRECEPT_API_URL = process.env.PRECEPT_API_URL || "https://api.preceptai.co
 // Helper to construct API headers
 function getHeaders() {
   const currentApiKey = apiKeyStorage.getStore();
-  const apiKey = currentApiKey || process.env.PRECEPT_API_KEY;
+  // Use != null so that an explicit key (even if unusual) is respected
+  const apiKey = currentApiKey != null ? currentApiKey : process.env.PRECEPT_API_KEY;
 
   if (!apiKey) {
     throw new Error(

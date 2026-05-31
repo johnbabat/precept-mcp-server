@@ -4,10 +4,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import dotenv from "dotenv";
-import { AsyncLocalStorage } from "async_hooks";
 import crypto from "crypto";
 import axios from "axios";
 import { registerAllTools } from "./tools.js";
+import { apiKeyStorage } from "./context.js";
 import {
   MemoryTokenStore,
   RedisTokenStore,
@@ -15,13 +15,13 @@ import {
   signJwt,
   encrypt,
   decrypt,
-  generateCodeChallenge
+  generateCodeChallenge,
+  escapeHtml,
+  generateCsrfToken,
+  verifyCsrfToken,
 } from "./auth.js";
 
 dotenv.config();
-
-// Export AsyncLocalStorage for tools to fetch request-scoped Precept API keys
-export const apiKeyStorage = new AsyncLocalStorage<string>();
 
 const server = new McpServer({
   name: "precept-mcp-server",
@@ -32,6 +32,48 @@ const server = new McpServer({
 registerAllTools(server);
 
 const transportType = (process.env.MCP_TRANSPORT || "stdio").toLowerCase();
+
+// ──────────────────────────────────────────
+// Helper: resolve base URL from request
+// ──────────────────────────────────────────
+function getBaseUrl(req: express.Request): string {
+  const host = req.headers.host || "localhost";
+  const protocol =
+    req.secure || req.headers["x-forwarded-proto"] === "https"
+      ? "https"
+      : "http";
+  return `${protocol}://${host}`;
+}
+
+// ──────────────────────────────────────────
+// Redirect URI Validation (prevents open redirect)
+// ──────────────────────────────────────────
+function isRedirectUriAllowed(redirectUri: string): boolean {
+  // Parse allowed patterns from env (comma-separated domain prefixes)
+  // Defaults to known MCP client callback domains + localhost for dev
+  const allowedPatternsRaw =
+    process.env.ALLOWED_REDIRECT_DOMAINS ||
+    "claude.ai,chatgpt.com,localhost,127.0.0.1";
+  const allowedDomains = allowedPatternsRaw.split(",").map((d) => d.trim().toLowerCase());
+
+  try {
+    const parsed = new URL(redirectUri);
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Enforce HTTPS in production (allow HTTP only for localhost/127.0.0.1)
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    if (!isLocal && parsed.protocol !== "https:") {
+      return false;
+    }
+
+    // Check if the hostname matches any allowed domain (exact or subdomain)
+    return allowedDomains.some((domain) => {
+      return hostname === domain || hostname.endsWith(`.${domain}`);
+    });
+  } catch {
+    return false;
+  }
+}
 
 // Premium HTML Consent / Authorization Template
 const AUTHORIZE_HTML_TEMPLATE = `
@@ -360,6 +402,7 @@ const AUTHORIZE_HTML_TEMPLATE = `
         <input type="hidden" name="state" value="{{state}}">
         <input type="hidden" name="code_challenge" value="{{code_challenge}}">
         <input type="hidden" name="code_challenge_method" value="{{code_challenge_method}}">
+        <input type="hidden" name="_csrf" value="{{csrf_token}}">
         
         <div class="form-group">
           <label for="apiKey">PRECEPT API KEY</label>
@@ -386,6 +429,7 @@ function renderAuthorizeHtml(params: {
   state: string;
   code_challenge: string;
   code_challenge_method: string;
+  csrf_token: string;
   apiKey?: string;
   error?: string;
 }) {
@@ -394,18 +438,20 @@ function renderAuthorizeHtml(params: {
     errorHtml = `
       <div class="error-msg">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        ${params.error}
+        ${escapeHtml(params.error)}
       </div>
     `;
   }
 
+  // All user-controlled values are HTML-escaped to prevent XSS
   return AUTHORIZE_HTML_TEMPLATE
-    .replace("{{client_id}}", params.client_id || "")
-    .replace("{{redirect_uri}}", params.redirect_uri || "")
-    .replace("{{state}}", params.state || "")
-    .replace("{{code_challenge}}", params.code_challenge || "")
-    .replace("{{code_challenge_method}}", params.code_challenge_method || "")
-    .replace("{{apiKey}}", params.apiKey || "")
+    .replace("{{client_id}}", escapeHtml(params.client_id || ""))
+    .replace("{{redirect_uri}}", escapeHtml(params.redirect_uri || ""))
+    .replace("{{state}}", escapeHtml(params.state || ""))
+    .replace("{{code_challenge}}", escapeHtml(params.code_challenge || ""))
+    .replace("{{code_challenge_method}}", escapeHtml(params.code_challenge_method || ""))
+    .replace("{{csrf_token}}", escapeHtml(params.csrf_token || ""))
+    .replace("{{apiKey}}", escapeHtml(params.apiKey || ""))
     .replace("{{error}}", errorHtml);
 }
 
@@ -436,7 +482,7 @@ async function main() {
     app.use(express.urlencoded({ extended: true }));
 
     const allowedHostsRaw = process.env.ALLOWED_HOSTS || "localhost,127.0.0.1";
-    const allowedHosts = allowedHostsRaw.split(",").map(h => h.trim());
+    const allowedHosts = allowedHostsRaw.split(",").map((h) => h.trim());
 
     // JWT key setup
     const jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
@@ -446,18 +492,36 @@ async function main() {
       );
     }
 
+    // NO_SECURITY guard — refuse to start in production mode
+    const noSecurity = process.env.NO_SECURITY === "true";
+    if (noSecurity) {
+      if (process.env.NODE_ENV === "production") {
+        console.error(
+          "FATAL: NO_SECURITY=true is not allowed in production. Refusing to start."
+        );
+        process.exit(1);
+      }
+      console.warn(
+        "⚠️  WARNING: NO_SECURITY=true — OAuth is DISABLED. " +
+        "All /mcp requests will use the server-level PRECEPT_API_KEY. " +
+        "This should ONLY be used for local development."
+      );
+    }
+
     // Provision stateful/stateless code store
     const tokenStore = process.env.REDIS_URL
       ? new RedisTokenStore(process.env.REDIS_URL)
       : new MemoryTokenStore();
 
+    // Token lifetimes
+    const ACCESS_TOKEN_TTL = 60 * 60;           // 1 hour
+    const REFRESH_TOKEN_TTL = 90 * 24 * 60 * 60; // 90 days
+
     // ──────────────────────────────────────────
     // OAuth Metadata Discovery Endpoints
     // ──────────────────────────────────────────
     app.get("/.well-known/oauth-protected-resource", (req, res) => {
-      const host = req.headers.host || "localhost";
-      const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-      const baseUrl = `${protocol}://${host}`;
+      const baseUrl = getBaseUrl(req);
       res.json({
         resource: `${baseUrl}/mcp`,
         authorization_servers: [baseUrl],
@@ -468,9 +532,7 @@ async function main() {
     });
 
     app.get(["/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"], (req, res) => {
-      const host = req.headers.host || "localhost";
-      const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-      const baseUrl = `${protocol}://${host}`;
+      const baseUrl = getBaseUrl(req);
       res.json({
         issuer: baseUrl,
         authorization_endpoint: `${baseUrl}/authorize`,
@@ -510,13 +572,24 @@ async function main() {
         return;
       }
 
+      // Validate redirect_uri against allowlist
+      const redirectUriStr = String(redirect_uri);
+      if (!isRedirectUriAllowed(redirectUriStr)) {
+        res.status(400).send("Bad Request: redirect_uri is not allowed. Check ALLOWED_REDIRECT_DOMAINS configuration.");
+        return;
+      }
+
+      // Generate a CSRF token for the form submission
+      const csrfToken = generateCsrfToken(jwtSecret);
+
       res.send(
         renderAuthorizeHtml({
           client_id: String(client_id),
-          redirect_uri: String(redirect_uri),
+          redirect_uri: redirectUriStr,
           state: String(state),
           code_challenge: String(code_challenge),
           code_challenge_method: String(code_challenge_method || "S256"),
+          csrf_token: csrfToken,
         })
       );
     });
@@ -532,6 +605,7 @@ async function main() {
         code_challenge,
         code_challenge_method,
         apiKey,
+        _csrf,
       } = req.body;
 
       if (!client_id || !redirect_uri || !state || !code_challenge || !apiKey) {
@@ -539,8 +613,22 @@ async function main() {
         return;
       }
 
+      // Verify CSRF token
+      if (!_csrf || !verifyCsrfToken(_csrf, jwtSecret)) {
+        res.status(403).send("Forbidden: Invalid or expired CSRF token. Please reload the page and try again.");
+        return;
+      }
+
+      // Re-validate redirect_uri on the POST side too
+      if (!isRedirectUriAllowed(redirect_uri)) {
+        res.status(400).send("Bad Request: redirect_uri is not allowed.");
+        return;
+      }
+
       const isValid = await validateApiKey(apiKey);
       if (!isValid) {
+        // Re-generate CSRF token for the retry form
+        const csrfToken = generateCsrfToken(jwtSecret);
         res.send(
           renderAuthorizeHtml({
             client_id,
@@ -548,6 +636,7 @@ async function main() {
             state,
             code_challenge,
             code_challenge_method,
+            csrf_token: csrfToken,
             apiKey,
             error: "Invalid Precept API Key. Please double check and try again.",
           })
@@ -558,11 +647,14 @@ async function main() {
       // Generate a temporary auth code (short-lived)
       const authCode = crypto.randomBytes(24).toString("hex");
 
+      // Encrypt the API key before storing (so it's never plaintext in Redis/memory)
+      const encryptedApiKey = encrypt(apiKey, jwtSecret);
+
       // Save credentials state in Redis or Memory
       await tokenStore.setAuthCode(
         authCode,
         {
-          apiKey,
+          encryptedApiKey,
           codeChallenge: code_challenge,
           clientId: client_id,
           redirectUri: redirect_uri,
@@ -571,7 +663,11 @@ async function main() {
       );
 
       // Redirect the user back to the client callback URL
-      res.redirect(`${redirect_uri}?code=${authCode}&state=${state}`);
+      // Note: redirect_uri has already been validated against the allowlist above
+      const safeRedirectUri = new URL(redirect_uri);
+      safeRedirectUri.searchParams.set("code", authCode);
+      safeRedirectUri.searchParams.set("state", state);
+      res.redirect(safeRedirectUri.toString());
     });
 
     // ──────────────────────────────────────────
@@ -594,13 +690,14 @@ async function main() {
           return;
         }
 
-        if (client_id && data.clientId !== client_id) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Client ID mismatch" });
+        // client_id and redirect_uri are MANDATORY checks (OAuth 2.1 spec)
+        if (!client_id || data.clientId !== client_id) {
+          res.status(400).json({ error: "invalid_grant", error_description: "Missing or mismatched client_id" });
           return;
         }
 
-        if (redirect_uri && data.redirectUri !== redirect_uri) {
-          res.status(400).json({ error: "invalid_grant", error_description: "Redirect URI mismatch" });
+        if (!redirect_uri || data.redirectUri !== redirect_uri) {
+          res.status(400).json({ error: "invalid_grant", error_description: "Missing or mismatched redirect_uri" });
           return;
         }
 
@@ -611,22 +708,23 @@ async function main() {
           return;
         }
 
-        // Issue Access Token & Refresh Token (Encrypt original API key)
-        const encryptedKey = encrypt(data.apiKey, jwtSecret);
+        // The API key is already encrypted in the token store — carry it forward into the JWT
         const accessToken = signJwt(
           {
-            apiKey: encryptedKey,
+            sub: data.clientId,
+            apiKey: data.encryptedApiKey,
             client_id: data.clientId,
-            exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
+            exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL,
           },
           jwtSecret
         );
 
         const refreshToken = signJwt(
           {
-            apiKey: encryptedKey,
+            sub: data.clientId,
+            apiKey: data.encryptedApiKey,
             client_id: data.clientId,
-            exp: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60, // 1 year
+            exp: Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL,
           },
           jwtSecret
         );
@@ -634,7 +732,7 @@ async function main() {
         res.json({
           access_token: accessToken,
           token_type: "Bearer",
-          expires_in: 30 * 24 * 60 * 60,
+          expires_in: ACCESS_TOKEN_TTL,
           refresh_token: refreshToken,
         });
       } else if (grantType === "refresh_token") {
@@ -651,21 +749,23 @@ async function main() {
           return;
         }
 
-        // Issue new tokens
+        // Issue new tokens (carry forward the encrypted API key)
         const newAccessToken = signJwt(
           {
+            sub: payload.client_id,
             apiKey: payload.apiKey,
             client_id: payload.client_id,
-            exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+            exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL,
           },
           jwtSecret
         );
 
         const newRefreshToken = signJwt(
           {
+            sub: payload.client_id,
             apiKey: payload.apiKey,
             client_id: payload.client_id,
-            exp: Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60,
+            exp: Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL,
           },
           jwtSecret
         );
@@ -673,7 +773,7 @@ async function main() {
         res.json({
           access_token: newAccessToken,
           token_type: "Bearer",
-          expires_in: 30 * 24 * 60 * 60,
+          expires_in: ACCESS_TOKEN_TTL,
           refresh_token: newRefreshToken,
         });
       } else {
@@ -682,6 +782,10 @@ async function main() {
     });
 
     // Initialize streamable HTTP transport
+    // NOTE: Using a single stateless transport (sessionIdGenerator = undefined).
+    // API key isolation is handled by AsyncLocalStorage at the request level.
+    // If stateful MCP features (sampling, notifications) are needed in the future,
+    // a per-session transport architecture should be adopted instead.
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless server
     });
@@ -702,13 +806,12 @@ async function main() {
       }
 
       let apiKey: string | undefined;
-      const noSecurity = process.env.NO_SECURITY === "true";
 
       if (!noSecurity) {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-          const host = req.headers.host || "localhost";
-          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="https://${host}/.well-known/oauth-protected-resource"`);
+          const baseUrl = getBaseUrl(req);
+          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`);
           res.status(401).json({ error: "invalid_token", error_description: "Missing or invalid authorization token" });
           return;
         }
@@ -721,8 +824,8 @@ async function main() {
 
         const payload = verifyJwt(token, jwtSecret);
         if (!payload || !payload.apiKey) {
-          const host = req.headers.host || "localhost";
-          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="https://${host}/.well-known/oauth-protected-resource"`);
+          const baseUrl = getBaseUrl(req);
+          res.setHeader("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`);
           res.status(401).json({ error: "invalid_token", error_description: "Invalid or expired authorization token" });
           return;
         }
@@ -746,7 +849,7 @@ async function main() {
 
       try {
         // Wrap request in AsyncLocalStorage context so tools can access user's individual API key
-        await apiKeyStorage.run(apiKey || "", async () => {
+        await apiKeyStorage.run(apiKey, async () => {
           await transport.handleRequest(req, res, req.body);
         });
       } catch (error) {
@@ -772,4 +875,3 @@ main().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);
 });
-
