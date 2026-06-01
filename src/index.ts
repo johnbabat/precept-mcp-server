@@ -877,20 +877,12 @@ async function main() {
       }
     });
 
-    // Initialize streamable HTTP transport in stateful SSE mode
-    // (Required by Claude.ai and Claude Desktop custom connectors)
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => crypto.randomUUID(),
-    });
-
-
-    // Connect server to transport
-    await server.connect(transport);
+    // Map to store transports by session ID
+    const transports = new Map<string, StreamableHTTPServerTransport>();
 
     // Expose MCP endpoint (handles GET for SSE stream, POST/DELETE for messages)
     app.all("/mcp", async (req, res) => {
       console.log(`[MCP] Request received. method=${req.body?.method}, type=${req.method}, host=${req.headers.host}`);
-
 
       // DNS Rebinding / Host validation
       const hostHeader = req.headers.host;
@@ -968,7 +960,6 @@ async function main() {
 
       console.log(`[MCP] Request authorized. Executing MCP method=${req.body?.method}`);
 
-
       // Ensure the Accept header includes text/event-stream to prevent 406 Not Acceptable
       // errors from strict validation in StreamableHTTPServerTransport
       const acceptHeader = req.headers.accept || "";
@@ -979,13 +970,63 @@ async function main() {
       }
 
       try {
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+        let transport: StreamableHTTPServerTransport;
+
+        const isInitReq = req.body && (
+          req.body.method === "initialize" || 
+          (Array.isArray(req.body) && req.body.some((b: any) => b.method === "initialize"))
+        );
+
+        if (sessionId && transports.has(sessionId)) {
+          transport = transports.get(sessionId)!;
+        } else if (!sessionId && req.method === "POST" && isInitReq) {
+          // Initialize streamable HTTP transport in stateful SSE mode
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => crypto.randomUUID(),
+          });
+          
+          const srv = new McpServer({
+            name: "precept-mcp-server",
+            version: "1.0.0",
+          });
+          registerAllTools(srv);
+          
+          await srv.connect(transport);
+          
+          // Hack to capture the session ID after the initialize request is handled
+          // StreamableHTTPServerTransport exposes sessionId as a property after initialization
+          const originalHandleRequest = transport.handleRequest.bind(transport);
+          transport.handleRequest = async (webReq: any, webRes: any, body: any) => {
+            const result = await originalHandleRequest(webReq, webRes, body);
+            // After the first request (initialize) is handled, store it
+            if ((transport as any).sessionId) {
+              transports.set((transport as any).sessionId, transport);
+            }
+            return result;
+          };
+        } else {
+          console.warn("[MCP] Bad Request: Missing or invalid session ID for non-initialize request.");
+          res.status(400).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: "Bad Request: No valid session ID provided",
+            },
+            id: null,
+          });
+          return;
+        }
+
         // Wrap request in AsyncLocalStorage context so tools can access user's individual API key
         await apiKeyStorage.run(apiKey, async () => {
           await transport.handleRequest(req, res, req.body);
         });
       } catch (error) {
         console.error("Error handling MCP request:", error);
-        res.status(500).send("Internal Server Error");
+        if (!res.headersSent) {
+          res.status(500).send("Internal Server Error");
+        }
       }
     });
 
