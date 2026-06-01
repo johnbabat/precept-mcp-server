@@ -163,18 +163,13 @@ const AUTHORIZE_HTML_TEMPLATE = `
       margin-bottom: 20px;
     }
     
-    .logo-badge {
+    .logo-img {
       width: 42px;
       height: 42px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-purple));
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-weight: 700;
-      font-size: 18px;
-      color: white;
-      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.15);
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      object-fit: cover;
     }
     
     .logo-connection {
@@ -339,7 +334,7 @@ const AUTHORIZE_HTML_TEMPLATE = `
     <div class="card">
       <div class="header">
         <div class="logo-container">
-          <div class="logo-badge">P</div>
+          <img src="https://www.preceptai.co.uk/precept.png" alt="Precept Logo" class="logo-img">
           <div class="logo-connection">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7"/>
