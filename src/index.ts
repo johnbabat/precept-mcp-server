@@ -87,20 +87,19 @@ const AUTHORIZE_HTML_TEMPLATE = `
   <title>Connect Precept to Claude / ChatGPT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #080710;
-      --card-bg: rgba(15, 10, 32, 0.65);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --primary-glow: rgba(99, 102, 241, 0.15);
-      --secondary-glow: rgba(168, 85, 247, 0.15);
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --accent: #a855f7;
-      --input-bg: rgba(255, 255, 255, 0.03);
-      --input-border: rgba(255, 255, 255, 0.1);
-      --error-color: #f87171;
+      --bg-color: #faf9f6;
+      --card-bg: #ffffff;
+      --card-border: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --accent: #ea580c;
+      --accent-purple: #7c3aed;
+      --input-bg: #ffffff;
+      --input-border: #d1d5db;
+      --error-color: #ef4444;
     }
     
     * {
@@ -112,62 +111,38 @@ const AUTHORIZE_HTML_TEMPLATE = `
     body {
       background-color: var(--bg-color);
       color: var(--text-main);
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
       overflow-x: hidden;
       position: relative;
-    }
-    
-    /* Radial Glow Effects */
-    body::before {
-      content: '';
-      position: absolute;
-      width: 400px;
-      height: 400px;
-      border-radius: 50%;
-      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-      top: -100px;
-      right: -100px;
-      z-index: 0;
-    }
-    
-    body::after {
-      content: '';
-      position: absolute;
-      width: 500px;
-      height: 500px;
-      border-radius: 50%;
-      background: radial-gradient(circle, var(--secondary-glow) 0%, transparent 70%);
-      bottom: -150px;
-      left: -150px;
-      z-index: 0;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(254, 215, 170, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(221, 214, 254, 0.15) 0%, transparent 50%);
     }
     
     .container {
       width: 100%;
-      max-width: 480px;
-      padding: 24px;
+      max-width: 440px;
+      padding: 20px;
       z-index: 10;
     }
     
     .card {
       background: var(--card-bg);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
       border: 1px solid var(--card-border);
-      border-radius: 28px;
-      padding: 40px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      border-radius: 24px;
+      padding: 36px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.03), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     
     @keyframes fadeIn {
       from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(16px);
       }
       to {
         opacity: 1;
@@ -177,96 +152,94 @@ const AUTHORIZE_HTML_TEMPLATE = `
     
     .header {
       text-align: center;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
     }
     
     .logo-container {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
     
     .logo-badge {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #6366f1, #a855f7);
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-purple));
       display: flex;
       justify-content: center;
       align-items: center;
-      font-weight: 800;
-      font-size: 22px;
-      box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+      font-weight: 700;
+      font-size: 18px;
+      color: white;
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.15);
     }
     
     .logo-connection {
-      color: var(--text-muted);
-      font-size: 20px;
-      animation: pulse 2s infinite ease-in-out;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
+      color: #9ca3af;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .logo-claude {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
       display: flex;
       justify-content: center;
       align-items: center;
     }
     
     .logo-claude svg {
-      width: 28px;
-      height: 28px;
+      width: 22px;
+      height: 22px;
     }
     
     h1 {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 700;
       margin-bottom: 8px;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.4px;
+      color: #111827;
     }
     
     .subtitle {
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.5;
     }
     
     .permissions {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
       border-radius: 16px;
-      padding: 16px 20px;
-      margin-bottom: 28px;
+      padding: 16px;
+      margin-bottom: 24px;
     }
     
     .permissions-title {
-      font-size: 12px;
+      font-size: 10.5px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
     }
     
     .permission-item {
       display: flex;
       align-items: flex-start;
-      gap: 12px;
-      font-size: 13px;
+      gap: 10px;
+      font-size: 12.5px;
       line-height: 1.5;
       margin-bottom: 8px;
-      color: #d1d5db;
+      color: #374151;
     }
     
     .permission-item:last-child {
@@ -274,30 +247,32 @@ const AUTHORIZE_HTML_TEMPLATE = `
     }
     
     .permission-icon {
-      color: #34d399;
-      margin-top: 2px;
+      color: #10b981;
+      font-weight: bold;
       flex-shrink: 0;
     }
     
     .form-group {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       position: relative;
     }
     
     label {
       display: block;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      color: #d1d5db;
-      margin-bottom: 8px;
+      color: #374151;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     input[type="password"] {
       width: 100%;
-      padding: 14px 16px;
+      padding: 12px 14px;
       background: var(--input-bg);
       border: 1px solid var(--input-border);
-      border-radius: 12px;
+      border-radius: 10px;
       color: var(--text-main);
       font-family: monospace;
       font-size: 14px;
@@ -306,15 +281,14 @@ const AUTHORIZE_HTML_TEMPLATE = `
     }
     
     input[type="password"]:focus {
-      border-color: #a855f7;
-      box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
-      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
     }
     
     .error-msg {
       color: var(--error-color);
-      font-size: 13px;
-      margin-top: 8px;
+      font-size: 12px;
+      margin-top: 6px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -322,45 +296,41 @@ const AUTHORIZE_HTML_TEMPLATE = `
     
     .btn-submit {
       width: 100%;
-      padding: 16px;
+      padding: 14px;
       border: none;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 10px;
+      background: #111827;
       color: white;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.25s ease;
-      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.25);
+      transition: all 0.2s ease;
     }
     
     .btn-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 30px rgba(168, 85, 247, 0.4);
-      filter: brightness(1.05);
+      background: #1f2937;
     }
     
     .btn-submit:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
     
     .footer-text {
       text-align: center;
       font-size: 11px;
       color: #6b7280;
-      margin-top: 24px;
+      margin-top: 20px;
       line-height: 1.5;
     }
     
     .footer-text a {
-      color: var(--text-muted);
+      color: #4f46e5;
       text-decoration: none;
-      transition: color 0.2s;
+      font-weight: 500;
     }
     
     .footer-text a:hover {
-      color: var(--text-main);
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -370,9 +340,13 @@ const AUTHORIZE_HTML_TEMPLATE = `
       <div class="header">
         <div class="logo-container">
           <div class="logo-badge">P</div>
-          <div class="logo-connection">⚡</div>
+          <div class="logo-connection">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
           <div class="logo-claude">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
               <path d="M22 12H2"/>
             </svg>
@@ -407,7 +381,7 @@ const AUTHORIZE_HTML_TEMPLATE = `
         <input type="hidden" name="_csrf" value="{{csrf_token}}">
         
         <div class="form-group">
-          <label for="apiKey">PRECEPT API KEY</label>
+          <label for="apiKey">Precept API Key</label>
           <input type="password" id="apiKey" name="apiKey" required placeholder="pt_..." value="{{apiKey}}">
           {{error}}
         </div>
