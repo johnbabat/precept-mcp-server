@@ -318,4 +318,28 @@ export function registerAllTools(server: McpServer) {
       }
     }
   );
+
+  // ──────────────────────────────────────────
+  // 6. precept_check_credits
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_check_credits",
+    {
+      description:
+        "Check the remaining credit balance for your Precept account. " +
+        "Returns the total number of credits currently available for search and enrichment tasks.",
+      inputSchema: z.object({}),
+    },
+    async () => {
+      try {
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/credits`,
+          { headers: getHeaders() }
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "checking credits");
+      }
+    }
+  );
 }
