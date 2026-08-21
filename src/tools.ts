@@ -141,6 +141,7 @@ const asyncJobInitOutputSchema = z
   .object({
     enrichment_id: z
       .string()
+      .optional()
       .describe("The unique job ID to poll with precept_get_job_status"),
     message: z
       .string()
@@ -156,30 +157,32 @@ const asyncJobInitOutputSchema = z
 
 const jobStatusOutputSchema = z
   .object({
-    enrichment_id: z.string().describe("The job ID"),
+    enrichment_id: z.string().optional().describe("The job ID"),
     status: z
-      .enum(["pending", "processing", "completed", "failed"])
-      .describe("Current lifecycle status of the job"),
+      .string()
+      .optional()
+      .describe(
+        "Current lifecycle status of the job (e.g. 'pending', 'in_progress', 'processing', 'completed', 'failed')",
+      ),
     name: z
       .string()
       .optional()
       .describe("Readable name of the job if specified"),
     progress: z
       .object({
-        completed: z.number().describe("Number of items processed so far"),
-        total: z.number().describe("Total items to process"),
-        skipped: z.number().describe("Number of skipped items"),
+        completed: z.number().optional().describe("Number of items processed so far"),
+        total: z.number().optional().describe("Total items to process"),
+        skipped: z.number().optional().describe("Number of skipped items"),
       })
       .optional()
       .describe("Progress counters while the job is still running"),
     results: z
-      .array(z.record(z.any()))
-      .nullable()
+      .any()
       .optional()
       .describe("Array of discovered lead or company objects when completed"),
     cost: z
       .object({
-        credits: z.number().describe("Total credits billed for this job"),
+        credits: z.number().optional().describe("Total credits billed for this job"),
       })
       .optional()
       .describe("Credit cost summary"),
@@ -197,11 +200,11 @@ const jobStatusOutputSchema = z
 
 const checkCreditsOutputSchema = z
   .object({
-    credits: z.number().describe("Available credit balance for this account"),
+    credits: z.number().optional().describe("Available credit balance for this account"),
     versionStatus: z
       .object({
-        serverVersion: z.string().describe("Currently running MCP server version"),
-        status: z.string().describe("Server status code"),
+        serverVersion: z.string().optional().describe("Currently running MCP server version"),
+        status: z.string().optional().describe("Server status code"),
         message: z.string().optional().describe("Status message"),
       })
       .optional()
@@ -212,8 +215,8 @@ const checkCreditsOutputSchema = z
 
 const checkVersionOutputSchema = z
   .object({
-    serverVersion: z.string().describe("Currently running MCP server version"),
-    status: z.string().describe("Server status code"),
+    serverVersion: z.string().optional().describe("Currently running MCP server version"),
+    status: z.string().optional().describe("Server status code"),
     message: z.string().optional().describe("Status message"),
   })
   .passthrough()
