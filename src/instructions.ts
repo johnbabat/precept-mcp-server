@@ -32,6 +32,11 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - To retrieve the actual data, poll \`precept_get_job_status\` with the \`jobId\`.
 - Inform the user that processing may take from a few seconds to a few minutes (phone number waterfalls take longest).
 
+### 5. Server Versioning & Update Notices
+- Both \`precept_check_credits\` and \`precept_check_version\` return \`versionStatus\`.
+- If \`versionStatus.isUpToDate\` is \`false\`, politely inform the user:
+  > *"Tip: A newer version of Precept MCP is available. You can click 'Refresh tools list' in your Claude/ChatGPT Connectors menu (or update your local npx package) to get the latest tools and features."*
+
 ---
 
 ## 💰 CREDIT PRICING & COST ESTIMATION FORMULAS

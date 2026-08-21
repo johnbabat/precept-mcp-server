@@ -20,7 +20,8 @@ Supports dual-transport bootstrapping:
 | `precept_get_company_insights` | Retrieve structured insights for specific companies — decision makers, technology stack, revenue, funding, employee counts, department ratios, and custom queries. Returns a `jobId`.                |
 | `precept_search_companies`     | Discover companies using natural language queries and optionally enrich with insights. Returns a `jobId`.                                                                                            |
 | `precept_get_job_status`       | Poll the status and retrieve results of any job. Returns `processing` (with progress) or `completed` (with full data).                                                                               |
-| `precept_check_credits`       | Check the remaining credit balance for your Precept account.                                                                                                                                         |
+| `precept_check_credits`       | Check the remaining credit balance for your Precept account and server version status.                                                                                |
+| `precept_check_version`       | Check the running server version against the latest published release to see if a connector update is available.                                                     |
 
 ### How It Works (Async Job Pattern)
 

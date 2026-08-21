@@ -24,7 +24,7 @@ import {
 
 dotenv.config();
 
-const SERVER_VERSION = "1.1.0";
+const SERVER_VERSION = "1.2.0";
 
 const server = new McpServer(
   {
@@ -37,7 +37,7 @@ const server = new McpServer(
 );
 
 // Register all Precept tools
-registerAllTools(server);
+registerAllTools(server, SERVER_VERSION);
 
 const transportType = (process.env.MCP_TRANSPORT || "stdio").toLowerCase();
 
@@ -1003,7 +1003,7 @@ async function main() {
               instructions: PRECEPT_INSTRUCTIONS,
             }
           );
-          registerAllTools(srv);
+          registerAllTools(srv, SERVER_VERSION);
           
           await srv.connect(transport);
           
