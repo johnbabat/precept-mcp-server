@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import axios from "axios";
 import { registerAllTools } from "./tools.js";
+import { PRECEPT_INSTRUCTIONS } from "./instructions.js";
 import { apiKeyStorage } from "./context.js";
 import {
   MemoryTokenStore,
@@ -23,10 +24,15 @@ import {
 
 dotenv.config();
 
-const server = new McpServer({
-  name: "precept-mcp-server",
-  version: "1.0.0",
-});
+const server = new McpServer(
+  {
+    name: "precept-mcp-server",
+    version: "1.0.0",
+  },
+  {
+    instructions: PRECEPT_INSTRUCTIONS,
+  }
+);
 
 // Register all Precept tools
 registerAllTools(server);
@@ -986,10 +992,15 @@ async function main() {
             sessionIdGenerator: () => crypto.randomUUID(),
           });
           
-          const srv = new McpServer({
-            name: "precept-mcp-server",
-            version: "1.0.0",
-          });
+          const srv = new McpServer(
+            {
+              name: "precept-mcp-server",
+              version: "1.0.0",
+            },
+            {
+              instructions: PRECEPT_INSTRUCTIONS,
+            }
+          );
           registerAllTools(srv);
           
           await srv.connect(transport);

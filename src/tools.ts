@@ -92,7 +92,7 @@ const enrichmentsSchema = z.object({
     "Max number of decision makers to return per company. Defaults to 5. Only applicable for decision_makers type."
   ),
   limitType: z.enum(["per_role", "overall"]).optional().describe(
-    "How the decisionMakersLimit is applied. 'per_role' (default): limit applies per department/job title. 'overall': limit is a total maximum across all roles, searched sequentially."
+    "How the decisionMakersLimit is applied. 'overall' (default): limit is a total maximum across all roles, searched sequentially. 'per_role': limit applies per department/job title."
   ),
 }).optional().describe("Optional enrichment configuration. See Precept API docs for detailed enrichment types and costs.");
 
@@ -106,13 +106,14 @@ export function registerAllTools(server: McpServer) {
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
+        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many leads to return, ask them first. " +
         "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to check status and retrieve results.",
       inputSchema: z.object({
         query: z.string().describe(
           "Natural language search query describing the target persona and company (e.g. 'Marketing heads at SaaS companies in California', 'CTOs at fintech startups in London with 50-200 employees')."
         ),
         limit: z.number().max(1000).optional().describe(
-          "Maximum number of leads to return (default 300, max 1000)."
+          "Maximum number of leads to return (max 1000). If the user did not specify how many leads to return, ask them first before calling this tool."
         ),
         name: z.string().optional().describe(
           "A readable name for this enrichment job, used for searching on the Precept dashboard."
@@ -155,6 +156,7 @@ export function registerAllTools(server: McpServer) {
         "Enrich a list of specific contacts with verified contact details and AI-powered insights. " +
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
+        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
         "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
       inputSchema: z.object({
         leads: z.array(
@@ -211,6 +213,7 @@ export function registerAllTools(server: McpServer) {
         "Retrieve detailed insights and enrichments for a list of specific companies. " +
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
+        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
         "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
       inputSchema: z.object({
         companies: z.array(
@@ -257,13 +260,14 @@ export function registerAllTools(server: McpServer) {
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
+        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many companies to return, ask them first. " +
         "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
       inputSchema: z.object({
         query: z.string().describe(
           "Natural language query to search for companies (e.g. 'SaaS companies in the UK with 50-200 employees')."
         ),
         limit: z.number().max(1000).optional().describe(
-          "Maximum number of companies to return (default 300, max 1000)."
+          "Maximum number of companies to return (max 1000). If the user did not specify how many companies to return, ask them first before calling this tool."
         ),
         name: z.string().optional().describe(
           "A readable name for this enrichment job."
