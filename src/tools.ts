@@ -170,6 +170,92 @@ const enrichmentsSchema = z
     "Optional enrichment configuration. See Precept API docs for detailed enrichment types and costs.",
   );
 
+// Shared Zod schemas for tool outputs (enables structured JSON support and removes 'OUTPUT SCHEMA RECOMMENDED' badge in ChatGPT)
+const asyncJobInitOutputSchema = z
+  .object({
+    enrichment_id: z
+      .string()
+      .describe("The unique job ID to poll with precept_get_job_status"),
+    message: z
+      .string()
+      .optional()
+      .describe("Status message describing the initialized job"),
+    finalLimit: z
+      .number()
+      .optional()
+      .describe("Adjusted limit based on available credit balance"),
+  })
+  .describe("Initialization response containing the jobId to poll for results");
+
+const jobStatusOutputSchema = z
+  .object({
+    enrichment_id: z.string().describe("The job ID"),
+    status: z
+      .enum(["pending", "processing", "completed", "failed"])
+      .describe("Current lifecycle status of the job"),
+    name: z
+      .string()
+      .optional()
+      .describe("Readable name of the job if specified"),
+    progress: z
+      .object({
+        completed: z.number().describe("Number of items processed so far"),
+        total: z.number().describe("Total items to process"),
+        skipped: z.number().describe("Number of skipped items"),
+      })
+      .optional()
+      .describe("Progress counters while the job is still running"),
+    results: z
+      .array(z.record(z.any()))
+      .nullable()
+      .optional()
+      .describe("Array of discovered lead or company objects when completed"),
+    cost: z
+      .object({
+        credits: z.number().describe("Total credits billed for this job"),
+      })
+      .optional()
+      .describe("Credit cost summary"),
+    phones_found: z
+      .number()
+      .optional()
+      .describe("Total phone numbers successfully found"),
+    emails_found: z
+      .number()
+      .optional()
+      .describe("Total email addresses successfully found"),
+  })
+  .describe("Job status and full data results when completed");
+
+const checkCreditsOutputSchema = z
+  .object({
+    credits: z.number().describe("Available credit balance for this account"),
+    versionStatus: z
+      .object({
+        currentVersion: z.string(),
+        latestVersion: z.string(),
+        isUpToDate: z.boolean(),
+        status: z.string(),
+        updateNotice: z.string().optional(),
+        howToUpdate: z.string().optional(),
+      })
+      .optional()
+      .describe("MCP server version status and update instructions if outdated"),
+  })
+  .describe("Current available credit balance and version status");
+
+const checkVersionOutputSchema = z
+  .object({
+    currentVersion: z.string().describe("Currently running MCP server version"),
+    latestVersion: z.string().describe("Latest published MCP server version on NPM"),
+    isUpToDate: z.boolean().describe("Whether the server is on the latest release"),
+    status: z.string().describe("Version status code ('up_to_date' or 'update_available')"),
+    message: z.string().optional().describe("Status message"),
+    updateNotice: z.string().optional().describe("Warning notice when an update is available"),
+    howToUpdate: z.string().optional().describe("Instructions on how to refresh or update"),
+  })
+  .describe("MCP server version check and update instructions");
+
 export function registerAllTools(server: McpServer, serverVersion: string = "1.2.0") {
   // ──────────────────────────────────────────
   // 1. precept_search_leads
@@ -227,6 +313,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
             "Activity-based filtering: find leads who recently posted or interacted with specific topics on LinkedIn. Provide up to 5 keywords or phrases. Adds +5 credits per lead.",
           ),
       }),
+      outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
@@ -317,6 +404,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
             "Set to true if lead names are not in English. Names will be translated before enrichment for more accurate results.",
           ),
       }),
+      outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
@@ -388,6 +476,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
             "Custom natural language questions to ask about each company (e.g. ['What CRM do they use?', 'What compliance certifications do they hold?']). Each query costs 0.2 credits per company. Responses returned in query_responses field.",
           ),
       }),
+      outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
@@ -439,6 +528,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
             "Custom natural language questions to ask about each discovered company. Each query costs 0.2 credits per company.",
           ),
       }),
+      outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
@@ -473,6 +563,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
             "The enrichment_id returned by any of the Precept search or enrichment tools.",
           ),
       }),
+      outputSchema: jobStatusOutputSchema,
     },
     async ({ jobId }) => {
       try {
@@ -497,6 +588,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Check the remaining credit balance for your Precept account. " +
         "Returns the total number of credits currently available for search and enrichment tasks, along with server version status.",
       inputSchema: z.object({}),
+      outputSchema: checkCreditsOutputSchema,
     },
     async () => {
       try {
@@ -524,6 +616,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Check the current running version of the Precept MCP server against the latest published version. " +
         "Returns whether the server is up to date and provides instructions to refresh the connector if an update is available.",
       inputSchema: z.object({}),
+      outputSchema: checkVersionOutputSchema,
     },
     async () => {
       try {
