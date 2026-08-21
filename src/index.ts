@@ -24,10 +24,12 @@ import {
 
 dotenv.config();
 
+const SERVER_VERSION = "1.1.0";
+
 const server = new McpServer(
   {
     name: "precept-mcp-server",
-    version: "1.0.0",
+    version: SERVER_VERSION,
   },
   {
     instructions: PRECEPT_INSTRUCTIONS,
@@ -995,7 +997,7 @@ async function main() {
           const srv = new McpServer(
             {
               name: "precept-mcp-server",
-              version: "1.0.0",
+              version: SERVER_VERSION,
             },
             {
               instructions: PRECEPT_INSTRUCTIONS,
