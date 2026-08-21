@@ -4,7 +4,7 @@
   "description": "Precept MCP Server for lead and company B2B intelligence",
   "type": "module",
   "bin": {
-    "precept-mcp": "./build/index.js"
+    "precept-mcp": "build/index.js"
   },
   "files": [
     "build",
@@ -18,7 +18,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/preceptai/precept-mcp-server.git"
+    "url": "git+https://github.com/preceptai/precept-mcp-server.git"
   },
   "keywords": [
     "mcp",
