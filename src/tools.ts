@@ -62,47 +62,12 @@ function formatError(error: any, context: string) {
   };
 }
 
-// Helper to check current running version against latest published NPM version
-let cachedLatestVersion: { version: string; timestamp: number } | null = null;
-
-export async function checkServerVersion(currentVersion: string = "1.2.0") {
-  let latestVersion = currentVersion;
-  try {
-    const now = Date.now();
-    // Cache for 5 minutes to avoid excessive external registry calls
-    if (cachedLatestVersion && now - cachedLatestVersion.timestamp < 300000) {
-      latestVersion = cachedLatestVersion.version;
-    } else {
-      const res = await axios.get(
-        "https://registry.npmjs.org/@preceptai/mcp-server/latest",
-        { timeout: 2000 }
-      );
-      if (res.data?.version) {
-        latestVersion = res.data.version;
-        cachedLatestVersion = { version: latestVersion, timestamp: now };
-      }
-    }
-  } catch (err) {
-    // Graceful fallback to current version if network/registry is temporarily unreachable
-  }
-
-  const isUpToDate = currentVersion === latestVersion;
+// Helper to return current running server version metadata
+export function checkServerVersion(currentVersion: string = "1.2.4") {
   return {
-    currentVersion,
-    latestVersion,
-    isUpToDate,
-    ...(isUpToDate
-      ? {
-          status: "up_to_date",
-          message: `Precept MCP server is up to date (v${currentVersion}).`,
-        }
-      : {
-          status: "update_available",
-          updateNotice:
-            `⚠️ A newer version of Precept MCP (v${latestVersion}) is available (running v${currentVersion}).`,
-          howToUpdate:
-            "Please refresh your connection to get the latest features. For instructions, see: https://www.preceptai.co.uk/mcp#update-tools",
-        }),
+    serverVersion: currentVersion,
+    status: "active",
+    message: `Precept MCP server is running v${currentVersion}.`,
   };
 }
 
@@ -235,34 +200,26 @@ const checkCreditsOutputSchema = z
     credits: z.number().describe("Available credit balance for this account"),
     versionStatus: z
       .object({
-        currentVersion: z.string(),
-        latestVersion: z.string(),
-        isUpToDate: z.boolean(),
-        status: z.string(),
-        message: z.string().optional(),
-        updateNotice: z.string().optional(),
-        howToUpdate: z.string().optional(),
+        serverVersion: z.string().describe("Currently running MCP server version"),
+        status: z.string().describe("Server status code"),
+        message: z.string().optional().describe("Status message"),
       })
       .optional()
-      .describe("MCP server version status and update instructions if outdated"),
+      .describe("MCP server version status"),
   })
   .passthrough()
   .describe("Current available credit balance and version status");
 
 const checkVersionOutputSchema = z
   .object({
-    currentVersion: z.string().describe("Currently running MCP server version"),
-    latestVersion: z.string().describe("Latest published MCP server version on NPM"),
-    isUpToDate: z.boolean().describe("Whether the server is on the latest release"),
-    status: z.string().describe("Version status code ('up_to_date' or 'update_available')"),
+    serverVersion: z.string().describe("Currently running MCP server version"),
+    status: z.string().describe("Server status code"),
     message: z.string().optional().describe("Status message"),
-    updateNotice: z.string().optional().describe("Warning notice when an update is available"),
-    howToUpdate: z.string().optional().describe("Instructions on how to refresh or update"),
   })
   .passthrough()
-  .describe("MCP server version check and update instructions");
+  .describe("MCP server version status");
 
-export function registerAllTools(server: McpServer, serverVersion: string = "1.2.1") {
+export function registerAllTools(server: McpServer, serverVersion: string = "1.2.4") {
   // ──────────────────────────────────────────
   // 1. precept_search_leads
   // ──────────────────────────────────────────

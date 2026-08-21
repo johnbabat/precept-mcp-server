@@ -1,3 +1,5 @@
+import { SERVER_VERSION } from "./version.js";
+
 /**
  * System instructions for the Precept MCP Server.
  * These instructions guide AI assistants on workflow rules, credit estimation,
@@ -32,10 +34,11 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - To retrieve the actual data, poll \`precept_get_job_status\` with the \`jobId\`.
 - Inform the user that processing may take from a few seconds to a few minutes (phone number waterfalls take longest).
 
-### 5. Server Versioning & Update Notices
-- Both \`precept_check_credits\` and \`precept_check_version\` return \`versionStatus\`.
-- If \`versionStatus.isUpToDate\` is \`false\`, politely inform the user:
-  > *"Tip: A newer version of Precept MCP is available. You can refresh your tools to get the latest features. For instructions, see: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
+### 5. Server Versioning & Client Sync
+- Your instructions and tool schemas are configured for Precept MCP **v${SERVER_VERSION}**.
+- Tools return \`versionStatus\` (e.g. in \`precept_check_credits\` and \`precept_check_version\`) with the running \`serverVersion\`.
+- If the returned \`serverVersion\` is higher than your configured version (v${SERVER_VERSION}), inform the user that their client connection is behind:
+  > *"Tip: The Precept MCP server has been updated to a newer version. Please refresh your connection to sync the latest tools and features: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
 
 ### 6. Handling Schema Validation Errors
 - If you ever receive an \`InvalidParams\`, \`Input validation error\`, or \`Output validation error\` (e.g. MCP error -32602) from any tool, it means your tool schemas are out of sync with the server.

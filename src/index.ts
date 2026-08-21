@@ -9,6 +9,7 @@ import axios from "axios";
 import { registerAllTools } from "./tools.js";
 import { PRECEPT_INSTRUCTIONS } from "./instructions.js";
 import { apiKeyStorage } from "./context.js";
+import { SERVER_VERSION } from "./version.js";
 import {
   MemoryTokenStore,
   RedisTokenStore,
@@ -23,8 +24,6 @@ import {
 } from "./auth.js";
 
 dotenv.config();
-
-const SERVER_VERSION = "1.2.3";
 
 const server = new McpServer(
   {

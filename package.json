@@ -1,6 +1,6 @@
 {
   "name": "@preceptai/mcp-server",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Precept MCP Server for lead and company B2B intelligence",
   "type": "module",
   "bin": {
