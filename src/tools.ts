@@ -37,6 +37,7 @@ function formatResponse(data: any) {
         text: JSON.stringify(data, null, 2),
       },
     ],
+    structuredContent: data,
   };
 }
 
@@ -185,6 +186,7 @@ const asyncJobInitOutputSchema = z
       .optional()
       .describe("Adjusted limit based on available credit balance"),
   })
+  .passthrough()
   .describe("Initialization response containing the jobId to poll for results");
 
 const jobStatusOutputSchema = z
@@ -225,6 +227,7 @@ const jobStatusOutputSchema = z
       .optional()
       .describe("Total email addresses successfully found"),
   })
+  .passthrough()
   .describe("Job status and full data results when completed");
 
 const checkCreditsOutputSchema = z
@@ -236,12 +239,14 @@ const checkCreditsOutputSchema = z
         latestVersion: z.string(),
         isUpToDate: z.boolean(),
         status: z.string(),
+        message: z.string().optional(),
         updateNotice: z.string().optional(),
         howToUpdate: z.string().optional(),
       })
       .optional()
       .describe("MCP server version status and update instructions if outdated"),
   })
+  .passthrough()
   .describe("Current available credit balance and version status");
 
 const checkVersionOutputSchema = z
@@ -254,9 +259,10 @@ const checkVersionOutputSchema = z
     updateNotice: z.string().optional().describe("Warning notice when an update is available"),
     howToUpdate: z.string().optional().describe("Instructions on how to refresh or update"),
   })
+  .passthrough()
   .describe("MCP server version check and update instructions");
 
-export function registerAllTools(server: McpServer, serverVersion: string = "1.2.0") {
+export function registerAllTools(server: McpServer, serverVersion: string = "1.2.1") {
   // ──────────────────────────────────────────
   // 1. precept_search_leads
   // ──────────────────────────────────────────
