@@ -101,7 +101,7 @@ export async function checkServerVersion(currentVersion: string = "1.2.0") {
           updateNotice:
             `⚠️ A newer version of Precept MCP (v${latestVersion}) is available (running v${currentVersion}).`,
           howToUpdate:
-            "If using Claude or ChatGPT Connectors: Open Settings -> Connectors/Plugins -> PreceptAI (3 dots) -> click 'Refresh tools list'. If running via npx locally, run 'npx -y @preceptai/mcp-server@latest'.",
+            "Please refresh your connection to get the latest features. For instructions, see: https://preceptai.co.uk/docs/mcp#update-tools",
         }),
   };
 }
