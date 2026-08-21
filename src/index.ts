@@ -24,7 +24,7 @@ import {
 
 dotenv.config();
 
-const SERVER_VERSION = "1.2.2";
+const SERVER_VERSION = "1.2.3";
 
 const server = new McpServer(
   {

@@ -35,13 +35,13 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 ### 5. Server Versioning & Update Notices
 - Both \`precept_check_credits\` and \`precept_check_version\` return \`versionStatus\`.
 - If \`versionStatus.isUpToDate\` is \`false\`, politely inform the user:
-  > *"Tip: A newer version of Precept MCP is available. You can refresh your tools to get the latest features. For instructions, see: https://preceptai.co.uk/docs/mcp#update-tools"*
+  > *"Tip: A newer version of Precept MCP is available. You can refresh your tools to get the latest features. For instructions, see: https://www.preceptai.co.uk/mcp#update-tools"*
 
 ### 6. Handling Schema Validation Errors
 - If you ever receive an \`InvalidParams\`, \`Input validation error\`, or \`Output validation error\` (e.g. MCP error -32602) from any tool, it means your tool schemas are out of sync with the server.
 - **DO NOT attempt to guess the parameters or retry the same request.**
 - Immediately notify the user:
-  > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: https://preceptai.co.uk/docs/mcp#update-tools"*
+  > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: https://www.preceptai.co.uk/mcp#update-tools"*
 
 ---
 
