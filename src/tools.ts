@@ -4,6 +4,7 @@ import axios, { AxiosError } from "axios";
 import dotenv from "dotenv";
 
 import { apiKeyStorage } from "./context.js";
+import { SERVER_VERSION } from "./version.js";
 
 dotenv.config();
 
@@ -63,7 +64,7 @@ function formatError(error: any, context: string) {
 }
 
 // Helper to return current running server version metadata
-export function checkServerVersion(currentVersion: string = "1.2.4") {
+export function checkServerVersion(currentVersion: string = SERVER_VERSION) {
   return {
     serverVersion: currentVersion,
     status: "active",
@@ -222,7 +223,7 @@ const checkVersionOutputSchema = z
   .passthrough()
   .describe("MCP server version status");
 
-export function registerAllTools(server: McpServer, serverVersion: string = "1.2.4") {
+export function registerAllTools(server: McpServer, serverVersion: string = SERVER_VERSION) {
   // ──────────────────────────────────────────
   // 1. precept_search_leads
   // ──────────────────────────────────────────
@@ -233,7 +234,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many leads to return, ask them first. " +
-        "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to check status and retrieve results.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
       inputSchema: z.object({
         query: z
           .string()
@@ -306,7 +307,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
       inputSchema: z.object({
         leads: z
           .array(
@@ -397,7 +398,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
       inputSchema: z.object({
         companies: z
           .array(
@@ -468,7 +469,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many companies to return, ask them first. " +
-        "This is an async operation — it returns a jobId immediately. Use precept_get_job_status with the returned enrichment_id to retrieve results.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
       inputSchema: z.object({
         query: z
           .string()
@@ -519,9 +520,9 @@ export function registerAllTools(server: McpServer, serverVersion: string = "1.2
       description:
         "Check the status and retrieve results of any Precept enrichment or search job. " +
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
-        "Use this tool to poll for results. Jobs can take anywhere from 15 seconds to 10+ minutes depending on the operation (phone number enrichment takes longest). " +
-        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. " +
-        "If the job is still processing, wait and call this tool again after some time.",
+        "MANDATORY POLLING RULE: Continue to poll this tool every 5 seconds for up to 10 minutes as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every minute until completed. " +
+        "If the job reaches 10 minutes and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
+        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done.",
       inputSchema: z.object({
         jobId: z
           .string()

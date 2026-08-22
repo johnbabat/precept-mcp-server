@@ -19,7 +19,7 @@ Supports dual-transport bootstrapping:
 | `precept_enrich_leads`         | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Returns verified emails, phones, professional summary, top problems, and strategic initiatives. Returns a `jobId`. |
 | `precept_get_company_insights` | Retrieve structured insights for specific companies — decision makers, technology stack, revenue, funding, employee counts, department ratios, and custom queries. Returns a `jobId`.                |
 | `precept_search_companies`     | Discover companies using natural language queries and optionally enrich with insights. Returns a `jobId`.                                                                                            |
-| `precept_get_job_status`       | Poll the status and retrieve results of any job. Returns `processing` (with progress) or `completed` (with full data).                                                                               |
+| `precept_get_job_status`       | Poll the status and retrieve results of any job. Poll every 5s for up to 10m while in progress and update user every minute. Returns `processing` (with progress) or `completed` (with full data). |
 | `precept_check_credits`       | Check the remaining credit balance for your Precept account and server version status.                                                                                |
 | `precept_check_version`       | Check the running server version against the latest published release to see if a connector update is available.                                                     |
 
@@ -30,10 +30,13 @@ User → "Find CTOs at fintech startups in London"
   ↓
 LLM calls precept_search_leads → returns { enrichment_id: "job_123" }
   ↓
-LLM waits ~30 seconds, then calls precept_get_job_status("job_123")
+LLM continuously polls precept_get_job_status("job_123") every 5 seconds (up to 10 minutes)
   ↓
-If still processing → LLM waits and retries
-If completed → LLM receives full results with contact details
+LLM gives progress/status updates to the user at least every minute
+  ↓
+If still processing → LLM keeps polling every 5 seconds
+If completed → LLM receives full results with contact details and presents them to the user
+If reaches 10 minutes still in progress → LLM asks user to check back in a few minutes as it is taking longer than usual
 ```
 
 ---
