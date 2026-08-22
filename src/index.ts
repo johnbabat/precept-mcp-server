@@ -889,7 +889,10 @@ async function main() {
 
     // Expose MCP endpoint (handles GET for SSE stream, POST/DELETE for messages)
     app.all("/mcp", async (req, res) => {
-      console.log(`[MCP] Request received. method=${req.body?.method}, type=${req.method}, host=${req.headers.host}`);
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      const toolName = req.body?.params?.name ? ` -> ${req.body.params.name}` : "";
+      const method = req.body?.method || req.method;
+      console.log(`[MCP] Incoming request: method=${method}${toolName}, http=${req.method}, sessionId=${sessionId || "none"}, host=${req.headers.host}`);
 
       // DNS Rebinding / Host validation
       const hostHeader = req.headers.host;
@@ -907,7 +910,7 @@ async function main() {
       if (!noSecurity) {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-          console.warn("[MCP] Unauthorized: Missing or invalid Bearer token");
+          console.warn("[MCP Auth] Unauthorized: Missing or invalid Bearer token");
           const baseUrl = getBaseUrl(req);
           res.setHeader(
             "WWW-Authenticate",
@@ -924,7 +927,7 @@ async function main() {
 
         const token = authHeader.split(" ")[1];
         if (!token) {
-          console.warn("[MCP] Unauthorized: Malformed Bearer token");
+          console.warn("[MCP Auth] Unauthorized: Malformed Bearer token");
           res
             .status(401)
             .json({
@@ -936,7 +939,7 @@ async function main() {
 
         const payload = verifyJwt(token, jwtSecret);
         if (!payload || !payload.apiKey) {
-          console.warn("[MCP] Unauthorized: Invalid or expired JWT payload");
+          console.warn("[MCP Auth] Unauthorized: Invalid or expired JWT payload");
           const baseUrl = getBaseUrl(req);
           res.setHeader(
             "WWW-Authenticate",
@@ -953,8 +956,9 @@ async function main() {
 
         try {
           apiKey = decrypt(payload.apiKey, jwtSecret);
+          console.log(`[MCP Auth] Token verified successfully for client_id=${payload.client_id || payload.sub}. Decrypted API key prefix=${apiKey ? apiKey.slice(0, 8) + "..." : "none"}`);
         } catch (err) {
-          console.error("[MCP] Failed to decrypt API key from token:", err);
+          console.error("[MCP Auth] Failed to decrypt API key from token:", err);
           res
             .status(401)
             .json({
@@ -964,8 +968,6 @@ async function main() {
           return;
         }
       }
-
-      console.log(`[MCP] Request authorized. Executing MCP method=${req.body?.method}`);
 
       // Ensure the Accept header includes text/event-stream to prevent 406 Not Acceptable
       // errors from strict validation in StreamableHTTPServerTransport
@@ -977,7 +979,6 @@ async function main() {
       }
 
       try {
-        const sessionId = req.headers["mcp-session-id"] as string | undefined;
         let transport: StreamableHTTPServerTransport;
 
         const isInitReq = req.body && (
@@ -986,8 +987,10 @@ async function main() {
         );
 
         if (sessionId && transports.has(sessionId)) {
+          console.log(`[MCP Transport] Reusing active stateful session: ${sessionId}`);
           transport = transports.get(sessionId)!;
         } else if (!sessionId && req.method === "POST" && isInitReq) {
+          console.log("[MCP Transport] Initializing new stateful session");
           // Initialize streamable HTTP transport in stateful SSE mode
           transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => crypto.randomUUID(),
@@ -1006,36 +1009,51 @@ async function main() {
           
           await srv.connect(transport);
           
-          // Hack to capture the session ID after the initialize request is handled
-          // StreamableHTTPServerTransport exposes sessionId as a property after initialization
+          // Capture the session ID after the initialize request is handled
           const originalHandleRequest = transport.handleRequest.bind(transport);
           transport.handleRequest = async (webReq: any, webRes: any, body: any) => {
             const result = await originalHandleRequest(webReq, webRes, body);
-            // After the first request (initialize) is handled, store it
             if ((transport as any).sessionId) {
               transports.set((transport as any).sessionId, transport);
+              console.log(`[MCP Transport] Stored stateful session: ${(transport as any).sessionId} (active sessions: ${transports.size})`);
             }
             return result;
           };
+
+          transport.onclose = () => {
+            if ((transport as any).sessionId) {
+              transports.delete((transport as any).sessionId);
+              console.log(`[MCP Transport] Closed and deleted session: ${(transport as any).sessionId}`);
+            }
+          };
         } else {
-          console.warn("[MCP] Bad Request: Missing or invalid session ID for non-initialize request.");
-          res.status(400).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32000,
-              message: "Bad Request: No valid session ID provided",
-            },
-            id: null,
+          // Stateless fallback: either client is stateless or container restarted losing in-memory session.
+          // Handle request using a per-request stateless transport so tool execution succeeds seamlessly.
+          console.log(`[MCP Transport] Using stateless transport fallback (sessionId=${sessionId || "none"}, method=${method}${toolName})`);
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined,
           });
-          return;
+          
+          const srv = new McpServer(
+            {
+              name: "precept-mcp-server",
+              version: SERVER_VERSION,
+            },
+            {
+              instructions: PRECEPT_INSTRUCTIONS,
+            }
+          );
+          registerAllTools(srv, SERVER_VERSION);
+          await srv.connect(transport);
         }
 
         // Wrap request in AsyncLocalStorage context so tools can access user's individual API key
         await apiKeyStorage.run(apiKey, async () => {
           await transport.handleRequest(req, res, req.body);
+          console.log(`[MCP] Request completed successfully for method=${method}${toolName}`);
         });
       } catch (error) {
-        console.error("Error handling MCP request:", error);
+        console.error(`[MCP Error] Error handling MCP request for method=${method}${toolName}:`, error);
         if (!res.headersSent) {
           res.status(500).send("Internal Server Error");
         }
