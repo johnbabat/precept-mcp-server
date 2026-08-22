@@ -117,7 +117,7 @@ const enrichmentsSchema = z
       .boolean()
       .optional()
       .describe(
-        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found.",
+        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found (1 credit for email per person, 10 for phone per person, or 11 for both per person). IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
       ),
     decisionMakersLimit: z
       .number()
@@ -171,7 +171,10 @@ const jobStatusOutputSchema = z
       .describe("Readable name of the job if specified"),
     progress: z
       .object({
-        completed: z.number().optional().describe("Number of items processed so far"),
+        completed: z
+          .number()
+          .optional()
+          .describe("Number of items processed so far"),
         total: z.number().optional().describe("Total items to process"),
         skipped: z.number().optional().describe("Number of skipped items"),
       })
@@ -183,7 +186,10 @@ const jobStatusOutputSchema = z
       .describe("Array of discovered lead or company objects when completed"),
     cost: z
       .object({
-        credits: z.number().optional().describe("Total credits billed for this job"),
+        credits: z
+          .number()
+          .optional()
+          .describe("Total credits billed for this job"),
       })
       .optional()
       .describe("Credit cost summary"),
@@ -201,10 +207,16 @@ const jobStatusOutputSchema = z
 
 const checkCreditsOutputSchema = z
   .object({
-    credits: z.number().optional().describe("Available credit balance for this account"),
+    credits: z
+      .number()
+      .optional()
+      .describe("Available credit balance for this account"),
     versionStatus: z
       .object({
-        serverVersion: z.string().optional().describe("Currently running MCP server version"),
+        serverVersion: z
+          .string()
+          .optional()
+          .describe("Currently running MCP server version"),
         status: z.string().optional().describe("Server status code"),
         message: z.string().optional().describe("Status message"),
       })
@@ -216,14 +228,20 @@ const checkCreditsOutputSchema = z
 
 const checkVersionOutputSchema = z
   .object({
-    serverVersion: z.string().optional().describe("Currently running MCP server version"),
+    serverVersion: z
+      .string()
+      .optional()
+      .describe("Currently running MCP server version"),
     status: z.string().optional().describe("Server status code"),
     message: z.string().optional().describe("Status message"),
   })
   .passthrough()
   .describe("MCP server version status");
 
-export function registerAllTools(server: McpServer, serverVersion: string = SERVER_VERSION) {
+export function registerAllTools(
+  server: McpServer,
+  serverVersion: string = SERVER_VERSION,
+) {
   // ──────────────────────────────────────────
   // 1. precept_search_leads
   // ──────────────────────────────────────────
@@ -234,7 +252,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many leads to return, ask them first. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         query: z
           .string()
@@ -258,7 +276,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
           .array(z.enum(["emails", "phones"]))
           .optional()
           .describe(
-            "Type of contact details to find. Options: 'emails', 'phones'. Default: both. Only used when includeContactDetails is true.",
+            "Type of contact details to find. Options: 'emails' (+1 credit/lead), 'phones' (+10 credits/lead). Default: both (+11 credits/lead). Only used when includeContactDetails is true.",
           ),
         findInsights: z
           .boolean()
@@ -270,7 +288,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 15+ data providers. Increases processing time significantly for phone numbers.",
+            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 15+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
           ),
         postInteractionKeywords: z
           .array(z.string())
@@ -307,7 +325,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         leads: z
           .array(
@@ -338,7 +356,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
                 .array(z.enum(["emails", "phones"]))
                 .optional()
                 .describe(
-                  "Type of contact details to find for this lead. Options: 'emails', 'phones'. Default: both.",
+                  "Type of contact details to find for this lead. Options: 'emails' (+1 credit), 'phones' (+10 credits). Default: both (+11 credits).",
                 ),
               customData: z
                 .record(z.string())
@@ -362,7 +380,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email and phone numbers. If true, results include enrich_email and enrich_phone fields.",
+            "Whether to find and verify email and phone numbers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). If true, results include enrich_email and enrich_phone fields. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
           ),
         translate: z
           .boolean()
@@ -398,7 +416,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         companies: z
           .array(
@@ -469,7 +487,7 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many companies to return, ask them first. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 5 seconds for up to 10 minutes while in progress, providing the user with status updates at least every minute until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         query: z
           .string()
@@ -520,8 +538,8 @@ export function registerAllTools(server: McpServer, serverVersion: string = SERV
       description:
         "Check the status and retrieve results of any Precept enrichment or search job. " +
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
-        "MANDATORY POLLING RULE: Continue to poll this tool every 5 seconds for up to 10 minutes as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every minute until completed. " +
-        "If the job reaches 10 minutes and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
+        "MANDATORY POLLING RULE: Continue to poll this tool every 4 seconds for up to 150 attempts (~10 minutes) as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every 15 polls (~1 minute) until completed. " +
+        "If the job reaches 150 attempts (~10 minutes) and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
         "Returns status 'processing' with progress info while running, or 'completed' with the full results when done.",
       inputSchema: z.object({
         jobId: z
