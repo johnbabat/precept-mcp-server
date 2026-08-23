@@ -46,7 +46,9 @@ function formatResponse(data: any) {
 function formatError(error: any, context: string) {
   let errorMsg: string;
   if (error instanceof AxiosError) {
-    const status = error.response?.status ? ` (HTTP ${error.response.status})` : "";
+    const status = error.response?.status
+      ? ` (HTTP ${error.response.status})`
+      : "";
     const detail =
       error.response?.data?.error ||
       error.response?.data?.message ||
@@ -308,18 +310,35 @@ export function registerAllTools(
           .describe(
             "Activity-based filtering: find leads who recently posted or interacted with specific topics on LinkedIn. Provide up to 5 keywords or phrases. Adds +5 credits per lead.",
           ),
+        webhookUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "Optional webhook URL to receive enrichment results. NOTE: NOT needed for MCP assistant workflows. You can omit this and use precept_get_job_status with the returned enrichment_id to fetch the results directly.",
+          ),
+        streamingResults: z
+          .boolean()
+          .optional()
+          .describe(
+            "Optional. When true (and webhookUrl is provided), contact results are progressively streamed to the webhook as each lead is enriched. NOT needed when polling with precept_get_job_status.",
+          ),
       }),
       outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
-        console.log(`[Tool] precept_search_leads starting... query="${args.query}", limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`);
+        console.log(
+          `[Tool] precept_search_leads starting... query="${args.query}", limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`,
+        );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/leads/search`,
           args,
           { headers: getHeaders() },
         );
-        console.log(`[Tool] precept_search_leads succeeded. jobId=${response.data?.enrichment_id || "none"}`);
+        console.log(
+          `[Tool] precept_search_leads succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "searching leads");
@@ -401,18 +420,35 @@ export function registerAllTools(
           .describe(
             "Set to true if lead names are not in English. Names will be translated before enrichment for more accurate results.",
           ),
+        webhookUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "Optional webhook URL to receive enrichment results. NOTE: NOT needed for MCP assistant workflows. You can omit this and use precept_get_job_status with the returned enrichment_id to fetch the results directly.",
+          ),
+        streamingResults: z
+          .boolean()
+          .optional()
+          .describe(
+            "Optional. When true (and webhookUrl is provided), contact results are progressively streamed to the webhook as each lead is enriched. NOT needed when polling with precept_get_job_status.",
+          ),
       }),
       outputSchema: asyncJobInitOutputSchema,
     },
     async (args) => {
       try {
-        console.log(`[Tool] precept_enrich_leads starting... count=${args.leads?.length}, contactDetails=${!!args.includeContactDetails}`);
+        console.log(
+          `[Tool] precept_enrich_leads starting... count=${args.leads?.length}, contactDetails=${!!args.includeContactDetails}`,
+        );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/leads/enrich`,
           args,
           { headers: getHeaders() },
         );
-        console.log(`[Tool] precept_enrich_leads succeeded. jobId=${response.data?.enrichment_id || "none"}`);
+        console.log(
+          `[Tool] precept_enrich_leads succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "enriching leads");
@@ -480,13 +516,17 @@ export function registerAllTools(
     },
     async (args) => {
       try {
-        console.log(`[Tool] precept_get_company_insights starting... count=${args.companies?.length}`);
+        console.log(
+          `[Tool] precept_get_company_insights starting... count=${args.companies?.length}`,
+        );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/companies/insights`,
           args,
           { headers: getHeaders() },
         );
-        console.log(`[Tool] precept_get_company_insights succeeded. jobId=${response.data?.enrichment_id || "none"}`);
+        console.log(
+          `[Tool] precept_get_company_insights succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "fetching company insights");
@@ -534,13 +574,17 @@ export function registerAllTools(
     },
     async (args) => {
       try {
-        console.log(`[Tool] precept_search_companies starting... query="${args.query}", limit=${args.limit || "default"}`);
+        console.log(
+          `[Tool] precept_search_companies starting... query="${args.query}", limit=${args.limit || "default"}`,
+        );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/companies/search`,
           args,
           { headers: getHeaders() },
         );
-        console.log(`[Tool] precept_search_companies succeeded. jobId=${response.data?.enrichment_id || "none"}`);
+        console.log(
+          `[Tool] precept_search_companies succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "searching companies");
@@ -577,8 +621,12 @@ export function registerAllTools(
           { headers: getHeaders() },
         );
         const data = response.data;
-        const progressInfo = data?.progress ? ` (progress: ${data.progress.completed || 0}/${data.progress.total || 0})` : "";
-        console.log(`[Tool] precept_get_job_status succeeded. jobId=${jobId}, status=${data?.status}${progressInfo}`);
+        const progressInfo = data?.progress
+          ? ` (progress: ${data.progress.completed || 0}/${data.progress.total || 0})`
+          : "";
+        console.log(
+          `[Tool] precept_get_job_status succeeded. jobId=${jobId}, status=${data?.status}${progressInfo}`,
+        );
         return formatResponse(data);
       } catch (error) {
         return formatError(error, `fetching job status for ${jobId}`);
@@ -605,7 +653,9 @@ export function registerAllTools(
           headers: getHeaders(),
         });
         const versionStatus = await checkServerVersion(serverVersion);
-        console.log(`[Tool] precept_check_credits succeeded. credits=${response.data?.credits}`);
+        console.log(
+          `[Tool] precept_check_credits succeeded. credits=${response.data?.credits}`,
+        );
         return formatResponse({
           ...response.data,
           versionStatus,
@@ -630,9 +680,13 @@ export function registerAllTools(
     },
     async () => {
       try {
-        console.log(`[Tool] precept_check_version starting... (running v${serverVersion})`);
+        console.log(
+          `[Tool] precept_check_version starting... (running v${serverVersion})`,
+        );
         const versionStatus = await checkServerVersion(serverVersion);
-        console.log(`[Tool] precept_check_version succeeded: v${versionStatus.serverVersion}`);
+        console.log(
+          `[Tool] precept_check_version succeeded: v${versionStatus.serverVersion}`,
+        );
         return formatResponse(versionStatus);
       } catch (error) {
         return formatError(error, "checking version");
