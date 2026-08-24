@@ -14,17 +14,20 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ## 🚨 MANDATORY WORKFLOW RULES FOR AI ASSISTANTS
 
-### 1. Always Ask for Limit if Unspecified
-- If the user does not specify how many leads or companies they want in a search, **ASK THEM FIRST** before executing the search.
-- Do not assume default limits (e.g. 300) without confirming the user's intent and budget.
+### 1. Default Search Limit (30 Items on First Attempt) & Asking for More
+- Unless the user specifically asks for a specific number of leads or companies to return, **by default return only 30 on the first try**.
+- Do not ask the user for a count upfront if unspecified; proceed with the default batch of 30.
+- If the user specifically asks for a specific number (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
+- After presenting the first batch of results (up to 30), **always ask the user if they want more results**.
 
-### 2. Always Check User Credits Before Any Search or Enrichment
+### 2. Always Check and Verify User Credits Before Any Search or Enrichment
 - Before calling \`precept_search_leads\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
+- **Credit Volume Verification**: Before searching for *any* number of items — including the default first attempt of 30 items or any user-requested volume — the AI assistant **MUST verify that the user has enough credits to return that volume**.
 - Compare the user's available credits against the estimated cost of the requested operation.
 
 ### 3. Estimate Credit Costs and Warn the User if Credits are Low
 - Calculate the estimated credits required using the pricing formula below.
-- If the user does **NOT** have enough credits for the full request:
+- If the user does **NOT** have enough credits for the volume (even for the default 30 or requested amount):
   - Inform them of their current credit balance and the required credits.
   - Explain that Precept automatically scales down results to return only what their credits can cover (or fails if balance is 0).
   - Confirm with the user if they would like to proceed with the capped limit or reduce their request parameters.

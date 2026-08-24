@@ -264,7 +264,7 @@ export function registerAllTools(
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
-        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many leads to return, ask them first. " +
+        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         query: z
@@ -277,7 +277,7 @@ export function registerAllTools(
           .max(1000)
           .optional()
           .describe(
-            "Maximum number of leads to return (max 1000). If the user did not specify how many leads to return, ask them first before calling this tool.",
+            "Maximum number of leads to return (max 1000). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. Always verify the user has sufficient credits for the volume before executing.",
           ),
         name: z
           .string()
@@ -543,7 +543,7 @@ export function registerAllTools(
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
-        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. If the user did not specify how many companies to return, ask them first. " +
+        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
       inputSchema: z.object({
         query: z
@@ -556,7 +556,7 @@ export function registerAllTools(
           .max(1000)
           .optional()
           .describe(
-            "Maximum number of companies to return (max 1000). If the user did not specify how many companies to return, ask them first before calling this tool.",
+            "Maximum number of companies to return (max 1000). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. Always verify the user has sufficient credits for the volume before executing.",
           ),
         name: z
           .string()
