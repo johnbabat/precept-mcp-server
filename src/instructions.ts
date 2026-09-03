@@ -61,6 +61,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Immediately notify the user:
   > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
 
+### 8. Role Limit (Maximum 40 Combined Departments and Job Titles)
+- When specifying \`departments\` and/or \`jobTitles\` for \`precept_get_company_insights\`, the total combined sum must never exceed 40 (\`departments.length + jobTitles.length <= 40\`).
+- If more than 40 roles are requested, narrow them down to the top 40 most relevant roles to avoid a 400 Bad Request error from the API.
+
 ---
 
 ## 💰 CREDIT PRICING & COST ESTIMATION FORMULAS

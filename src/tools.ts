@@ -109,16 +109,20 @@ const enrichmentsSchema = z
       ),
     departments: z
       .array(z.string())
+      .max(40)
       .optional()
       .describe(
         "Department names to find employees or insights for (case-insensitive). " +
-          "Valid values include: 'C-Suite', 'Engineering and Technical', 'Sales', 'Marketing', 'Product', 'Human Resources', 'Finance & Accounting', 'Operations', 'Design', 'Data & Analytics', 'Legal', 'Customer Service', 'Information Technology', 'Research', 'Consulting', 'Founder', and more.",
+          "Valid values include: 'C-Suite', 'Engineering and Technical', 'Sales', 'Marketing', 'Product', 'Human Resources', 'Finance & Accounting', 'Operations', 'Design', 'Data & Analytics', 'Legal', 'Customer Service', 'Information Technology', 'Research', 'Consulting', 'Founder', and more. " +
+          "NOTE: The combined sum of departments and jobTitles must not exceed 40.",
       ),
     jobTitles: z
       .array(z.string())
+      .max(40)
       .optional()
       .describe(
-        "Job titles to find employees for. Any title works (e.g. 'Software Engineer', 'VP Sales', 'Head of Marketing').",
+        "Job titles to find employees for. Any title works (e.g. 'Software Engineer', 'VP Sales', 'Head of Marketing'). " +
+          "NOTE: The combined sum of departments and jobTitles must not exceed 40.",
       ),
     country: z
       .array(z.string())
