@@ -437,6 +437,13 @@ export function registerAllTools(
           .describe(
             "Optional. When true (and webhookUrl is provided), contact results are progressively streamed to the webhook as each lead is enriched. NOT needed when polling with precept_get_job_status.",
           ),
+        interests: z
+          .array(z.string())
+          .max(5)
+          .optional()
+          .describe(
+            "Optional array of up to 5 keyword interests for the batch (e.g. ['Banking', 'Insurance']). Precept researches the web to find verified information about each person related to these topics and appends findings as '[<Keyword> Interest]: ...' paragraphs to their professional summary.",
+          ),
       }),
       outputSchema: asyncJobInitOutputSchema,
     },
