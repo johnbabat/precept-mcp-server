@@ -324,15 +324,6 @@ export function registerAllTools(
                 .describe(
                   "Timeframe for the posts search: 'day' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). Default: 'month'.",
                 ),
-              limit: z
-                .number()
-                .int()
-                .min(1)
-                .max(1000)
-                .optional()
-                .describe(
-                  "Maximum number of posts/leads to discover (defaults to search query limit, max 1000).",
-                ),
             }),
             z.object({
               type: z.literal("post_interaction"),
