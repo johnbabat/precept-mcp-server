@@ -307,12 +307,47 @@ export function registerAllTools(
           .describe(
             "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 15+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
           ),
-        postInteractionKeywords: z
-          .array(z.string())
-          .max(5)
+        signal: z
+          .discriminatedUnion("type", [
+            z.object({
+              type: z.literal("post_search"),
+              keywords: z
+                .array(z.string())
+                .min(1)
+                .max(5)
+                .describe(
+                  "1 to 5 keywords or phrases to search LinkedIn posts for.",
+                ),
+              timeframe: z
+                .enum(["day", "week", "month", "year"])
+                .optional()
+                .describe(
+                  "Timeframe for the posts search: 'day' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). Default: 'month'.",
+                ),
+              limit: z
+                .number()
+                .int()
+                .min(1)
+                .max(1000)
+                .optional()
+                .describe(
+                  "Maximum number of posts/leads to discover (defaults to search query limit, max 1000).",
+                ),
+            }),
+            z.object({
+              type: z.literal("post_interaction"),
+              keywords: z
+                .array(z.string())
+                .min(1)
+                .max(5)
+                .describe(
+                  "1 to 5 keywords or phrases to find leads who recently engaged (posted, liked, commented) with relevant content.",
+                ),
+            }),
+          ])
           .optional()
           .describe(
-            "Activity-based filtering: find leads who recently posted or interacted with specific topics on LinkedIn. Provide up to 5 keywords or phrases. Adds +5 credits per lead.",
+            "LinkedIn activity signal for discovering leads based on recent post activity. Choose one: 'post_search' (search recent posts matching keywords, returning authors and their posts) or 'post_interaction' (find people interacting with posts matching keywords). Adds +5 credits per lead.",
           ),
         webhookUrl: z
           .string()

@@ -76,10 +76,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
   - Default / Both (\`emails\` + \`phones\`): \`+11 credits / lead\`
-- **With Activity Filtering (\`postInteractionKeywords: [...]\`)**: \`+5 credits / lead\`
+- **With Activity Signal (\`signal: { type: "post_search", ... }\` or \`signal: { type: "post_interaction", ... }\`)**: \`+5 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.1 or 1.1) + contactCost (0, 1, 10, or 11) + activityCost (0 or 5)
+  Cost per lead = baseCost (0.1 or 1.1) + contactCost (0, 1, 10, or 11) + signalCost (0 or 5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
