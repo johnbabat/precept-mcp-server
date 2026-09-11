@@ -134,4 +134,44 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - When a user initiates a search or enrichment job with insufficient credits:
   - If available credits > 0: Precept calculates \`finalLimit = floor(availableCredits / costPerUnit)\` and returns HTTP 202, processing only up to \`finalLimit\` items.
   - If available credits <= 0: Precept rejects the request immediately with HTTP 402 ("Not enough credits").
+
+---
+
+## 🚀 AUTOMATED OUTREACH & CAMPAIGN QUEUE MANAGEMENT
+
+### 1. Extension Verification Before Outreach
+- Before queuing any LinkedIn outreach campaign, **ALWAYS call \`precept_get_extension_status\`** to check if the user's Precept Chrome extension is active.
+- Automated outreach executes safely in the background of Google Chrome via this extension using direct authenticated requests.
+  - **No Precept web app tab or active LinkedIn tab needs to stay open**; outreach runs continuously in the background whenever Google Chrome is open.
+- **If Extension is Missing or Inactive**:
+  - If \`installed === false\`: Instruct the user that automated LinkedIn outreach requires the free Precept Chrome extension. Provide them with the direct installation link:
+    > *"To enable automated LinkedIn outreach, please install the Precept Chrome extension: [Install Precept Extension](https://chromewebstore.google.com/detail/precept/mlhpcomoechogpgbmjgpfenbmpflcfig). Once installed and logged into LinkedIn, outreach runs automatically in the background of Chrome."*
+  - If \`installed === true\` and \`active === false\`: Remind the user:
+    > *"The Precept Chrome extension is installed, but hasn't communicated with Precept recently. Please ensure Google Chrome is open and you are logged into LinkedIn so outreach can proceed."*
+
+### 2. Ad-Hoc Lead Queuing Directly from Search Results
+- When the user searches for leads using \`precept_search_leads\` and expresses intent to connect (e.g. "reach out to these leads", "connect with them", "start a campaign for these people"):
+  - You do **NOT** need to create a pre-saved lead list first.
+  - Simply map the search results directly into the \`leads\` array of \`precept_queue_campaign\`:
+    \`[{ name: lead.name, linkedinUrl: lead.linkedinUrl, company: lead.company, title: lead.title }]\`
+  - Leave \`autoSaveLeadsList: true\` (default). Precept will automatically create and save a new list in their Precept dashboard so their leads remain organized.
+
+### 3. Queue Discipline & FIFO Execution
+- Only one campaign can actively connect at a time to strictly safeguard the user's LinkedIn account reputation and prevent rate limit flags.
+- If a campaign is already executing (\`status: "running"\` or \`"paused"\`), \`precept_queue_campaign\` automatically appends the new campaign to the queue in FIFO order with an incremental \`queuePosition\` (1 = next in line).
+- Inform the user of their campaign's status and position in line.
+
+### 4. Visibility into Current Outreach Queue
+- Use \`precept_get_outreach_queue\` to report full queue transparency:
+  - Active campaign name, connection progress (e.g. \`14/50 leads connected\`), and status.
+  - Any active rate limit cool-off countdowns (\`rateLimitPause.remainingMinutes\`).
+  - Conversion metrics (invitations sent, invitations accepted).
+  - Upcoming queued campaigns with their queue positions.
+
+### 5. Managing Queue & Outreach Controls
+- Use \`precept_manage_queue\` to control execution:
+  - \`action: "pause"\`: Temporarily pause active outreach.
+  - \`action: "resume"\`: Resume a paused campaign.
+  - \`action: "archive"\` (or \`"cancel"\`): Archive an active or paused campaign to History, allowing upcoming queued campaigns to advance.
+  - \`action: "remove"\`: Remove an upcoming campaign from the queue.
 `;

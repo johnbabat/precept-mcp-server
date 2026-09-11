@@ -255,6 +255,140 @@ const checkVersionOutputSchema = z
   .passthrough()
   .describe("MCP server version status");
 
+const leadInputSchema = z.object({
+  name: z.string().describe("Full name of the lead"),
+  linkedinUrl: z.string().describe("LinkedIn profile URL of the lead"),
+  email: z.string().optional().describe("Email address if available"),
+  company: z.string().optional().describe("Company or employer name"),
+  title: z.string().optional().describe("Job title or headline"),
+  headline: z.string().optional().describe("Headline description"),
+  note: z
+    .string()
+    .optional()
+    .describe(
+      "Custom personalized connection note specifically for this lead",
+    ),
+});
+
+const extensionStatusOutputSchema = z
+  .object({
+    installed: z
+      .boolean()
+      .describe("Whether the Precept Chrome extension is installed"),
+    active: z
+      .boolean()
+      .describe(
+        "Whether the extension has communicated with Precept recently (<10 min)",
+      ),
+    lastSeenAt: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("ISO timestamp of the last extension heartbeat check-in"),
+    extensionVersion: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Installed version of the Chrome extension"),
+    chromeStoreUrl: z
+      .string()
+      .describe("Direct Chrome Web Store URL to install the extension"),
+    message: z
+      .string()
+      .describe("Human-readable status summary and next action instructions"),
+  })
+  .passthrough()
+  .describe("Status of the user's Precept Chrome extension");
+
+const queueCampaignOutputSchema = z
+  .object({
+    success: z.boolean(),
+    campaignId: z.string().optional(),
+    name: z.string().optional(),
+    status: z
+      .string()
+      .optional()
+      .describe(
+        "'running' if it started immediately, 'queued' if placed behind an active campaign",
+      ),
+    queuePosition: z
+      .number()
+      .optional()
+      .describe("Position in the outreach queue (1 = next in line)"),
+    totalLeads: z.number().optional(),
+    autoSavedListId: z
+      .string()
+      .optional()
+      .describe("ID of the newly created lead list saved in Precept"),
+    message: z.string().optional(),
+  })
+  .passthrough()
+  .describe("Result of queuing the LinkedIn outreach campaign");
+
+const outreachQueueOutputSchema = z
+  .object({
+    activeCampaign: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        status: z.string(),
+        currentIndex: z.number().optional(),
+        totalCount: z.number().optional(),
+        progressPct: z.number().optional(),
+        rateLimitPause: z
+          .object({
+            isPaused: z.boolean(),
+            resumeAt: z.string().nullable().optional(),
+            remainingMinutes: z.number().optional(),
+          })
+          .optional(),
+        stats: z
+          .object({
+            invited: z.number(),
+            accepted: z.number(),
+            messageSent: z.number(),
+            replied: z.number(),
+          })
+          .optional(),
+        latestLog: z.string().optional(),
+      })
+      .nullable()
+      .optional(),
+    queue: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        queuePosition: z.number(),
+        totalLeads: z.number(),
+        status: z.string(),
+        createdAt: z.string().optional(),
+      }),
+    ),
+    queueCount: z.number().optional(),
+    history: z.array(z.any()).optional(),
+    extension: z
+      .object({
+        installed: z.boolean(),
+        active: z.boolean(),
+        chromeStoreUrl: z.string(),
+      })
+      .optional(),
+  })
+  .passthrough()
+  .describe("Current outreach queue, active campaign progress, and stats");
+
+const manageQueueOutputSchema = z
+  .object({
+    success: z.boolean(),
+    action: z.string(),
+    campaignId: z.string().optional(),
+    name: z.string().optional(),
+    status: z.string().optional(),
+    message: z.string(),
+  })
+  .passthrough()
+  .describe("Result of managing outreach campaign lifecycle");
+
 export function registerAllTools(
   server: McpServer,
   serverVersion: string = SERVER_VERSION,
@@ -727,6 +861,196 @@ export function registerAllTools(
         return formatResponse(versionStatus);
       } catch (error) {
         return formatError(error, "checking version");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 8. precept_get_extension_status
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_extension_status",
+    {
+      description:
+        "Check whether the user's Precept Chrome extension is installed, active, and communicating with Precept. " +
+        "Automated outreach runs in the background of Google Chrome via this extension (no open tabs or DOM interaction needed). " +
+        "If the extension is not installed or inactive, the response contains instructions and a direct Chrome Web Store link for the user.",
+      inputSchema: z.object({}),
+      outputSchema: extensionStatusOutputSchema,
+    },
+    async () => {
+      try {
+        console.log("[Tool] precept_get_extension_status starting...");
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/campaigns/extension-status`,
+          { headers: getHeaders() },
+        );
+        console.log(
+          `[Tool] precept_get_extension_status succeeded. installed=${response.data?.installed}, active=${response.data?.active}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "checking extension status");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 9. precept_queue_campaign
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_queue_campaign",
+    {
+      description:
+        "Queue an automated LinkedIn outreach campaign to connect with leads. " +
+        "Supports queuing ad-hoc leads directly from search results without needing a pre-saved list (with optional auto-saving to your Precept lead lists), or referencing an existing saved leadsListId. " +
+        "If an outreach campaign is already running or paused, this campaign will be placed safely into the queue in FIFO order.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .describe(
+            "Descriptive name for the campaign (e.g. 'Fintech Founders Outreach - London Q3').",
+          ),
+        leads: z
+          .array(leadInputSchema)
+          .optional()
+          .describe(
+            "Array of leads to reach out to. Must include at least 'name' and 'linkedinUrl'. Required if leadsListId is not provided.",
+          ),
+        leadsListId: z
+          .string()
+          .optional()
+          .describe(
+            "ID of an existing Precept lead list to run outreach on. Required if leads is not provided.",
+          ),
+        includePersonalizedNote: z
+          .boolean()
+          .optional()
+          .describe(
+            "Whether to include a personalized message note with the connection request. Defaults to true if a note or noteTemplate is provided.",
+          ),
+        noteTemplate: z
+          .string()
+          .optional()
+          .describe(
+            "Template for personalized connection note. Supports template variables: {{firstName}}, {{company}}, {{title}}. Example: 'Hi {{firstName}}, noticed your work at {{company}} and would love to connect!'",
+          ),
+        autoSaveLeadsList: z
+          .boolean()
+          .optional()
+          .describe(
+            "When providing ad-hoc leads directly from search results, automatically saves them as a new lead list in your Precept account for future reference. Defaults to true.",
+          ),
+      }),
+      outputSchema: queueCampaignOutputSchema,
+    },
+    async ({
+      name,
+      leads,
+      leadsListId,
+      includePersonalizedNote,
+      noteTemplate,
+      autoSaveLeadsList,
+    }) => {
+      try {
+        console.log(
+          `[Tool] precept_queue_campaign starting... name=${name}, leadsCount=${leads?.length || 0}, leadsListId=${leadsListId}`,
+        );
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/campaigns/queue`,
+          {
+            name,
+            leads,
+            leadsListId,
+            includePersonalizedNote,
+            noteTemplate,
+            autoSaveLeadsList,
+          },
+          { headers: getHeaders() },
+        );
+        console.log(
+          `[Tool] precept_queue_campaign succeeded. campaignId=${response.data?.campaignId}, status=${response.data?.status}, queuePosition=${response.data?.queuePosition}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, `queuing campaign '${name}'`);
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 10. precept_get_outreach_queue
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_outreach_queue",
+    {
+      description:
+        "Get full visibility into the current LinkedIn outreach queue. " +
+        "Returns the actively running campaign (with live progress, rate-limit sleep countdowns, and accepted invite stats), upcoming queued campaigns with their queue positions, and extension liveness.",
+      inputSchema: z.object({}),
+      outputSchema: outreachQueueOutputSchema,
+    },
+    async () => {
+      try {
+        console.log("[Tool] precept_get_outreach_queue starting...");
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/campaigns/queue`,
+          { headers: getHeaders() },
+        );
+        const activeName = response.data?.activeCampaign?.name || "none";
+        const queueLen = response.data?.queue?.length || 0;
+        console.log(
+          `[Tool] precept_get_outreach_queue succeeded. active=${activeName}, queueLength=${queueLen}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "fetching outreach queue");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 11. precept_manage_queue
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_manage_queue",
+    {
+      description:
+        "Manage the LinkedIn outreach queue. Pause active outreach, resume paused campaigns, archive an active campaign to History, or remove an upcoming campaign from the queue.",
+      inputSchema: z.object({
+        action: z
+          .enum(["pause", "resume", "archive", "cancel", "remove"])
+          .describe(
+            "The management action to perform: 'pause' to temporarily halt outreach, 'resume' to continue outreach, 'archive' (or 'cancel') to end outreach and move the campaign to History, or 'remove' to remove an upcoming campaign from the queue.",
+          ),
+        campaignId: z
+          .string()
+          .optional()
+          .describe(
+            "Specific campaign ID to pause, resume, or cancel. If omitted for pause or resume, targets the currently active campaign.",
+          ),
+      }),
+      outputSchema: manageQueueOutputSchema,
+    },
+    async ({ action, campaignId }) => {
+      try {
+        console.log(
+          `[Tool] precept_manage_queue starting... action=${action}, campaignId=${campaignId || "active"}`,
+        );
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/campaigns/action`,
+          { action, campaignId },
+          { headers: getHeaders() },
+        );
+        console.log(
+          `[Tool] precept_manage_queue succeeded: ${response.data?.message}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `performing action '${action}' on campaign ${campaignId || "active"}`,
+        );
       }
     },
   );
