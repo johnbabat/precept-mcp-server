@@ -21,7 +21,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - After presenting the first batch of results (up to 30), **always ask the user if they want more results**.
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
-- Before calling \`precept_search_leads\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
+- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
 - **Credit Volume Verification**: Before searching for *any* number of items — including the default first attempt of 30 items or any user-requested volume — the AI assistant **MUST verify that the user has enough credits to return that volume**.
 - Compare the user's available credits against the estimated cost of the requested operation.
 
@@ -38,7 +38,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Only set \`includeContactDetails: true\` (or specify contact \`enrichType\`) if the user **explicitly asks for contact information** (e.g. "find their emails", "get phone numbers", "with contact details", "enrich contact info").
 
 ### 5. Asynchronous Job Handling & Polling Rules
-- All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
+- All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
 - **Continuous Polling Requirement (150 attempts, every 4 seconds = 10 minutes max)**:
   - Once a search or enrichment job is initiated, the AI assistant **MUST continuously poll \`precept_get_job_status\` every 4 seconds for up to 150 attempts** (totaling up to 10 minutes) as long as the job is still in progress (\`pending\`, \`processing\`, or \`in_progress\`).
   - **DO NOT stop polling prematurely** or assume a job has stalled before 150 poll attempts have completed (lead discovery, company intelligence, and phone waterfall lookups take time across multiple data sources).
@@ -70,20 +70,36 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 ## 💰 CREDIT PRICING & COST ESTIMATION FORMULAS
 
 ### 1. Lead Search (\`precept_search_leads\`)
+- Searches contacts using natural language persona queries (e.g. titles, industries, locations).
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
   - Default / Both (\`emails\` + \`phones\`): \`+11 credits / lead\`
-- **With Activity Signal (\`signal: { type: "post_search", ... }\` or \`signal: { type: "post_interaction", ... }\`)**: \`+5 credits / lead\`
+- **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+5 credits / lead\` (finds people matching your query who recently engaged with post topics)
 - **Formula**:
   \`\`\`
   Cost per lead = baseCost (0.1 or 1.1) + contactCost (0, 1, 10, or 11) + signalCost (0 or 5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
-### 2. Lead Enrichment (\`precept_enrich_leads\`)
+### 2. Post Search (\`precept_get_leads_from_post_search\`)
+- Discovers leads directly from authors who recently published LinkedIn posts matching keywords (without needing a persona query).
+- **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
+- **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
+- **Post Search Activity Signal**: \`+5.0 credits / lead\`
+- **With Contact Details (\`includeContactDetails: true\`)**:
+  - Emails only: \`+1 credit / lead\`
+  - Phones only: \`+10 credits / lead\`
+  - Default / Both: \`+11 credits / lead\`
+- **Formula**:
+  \`\`\`
+  Cost per lead = baseCost (0.1 or 1.1) + 5.0 + contactCost (0, 1, 10, or 11)
+  Total Estimated Credits = Cost per lead * limit
+  \`\`\`
+
+### 3. Lead Enrichment (\`precept_enrich_leads\`)
 - **Base AI Insights**: \`1.0 credit / lead\`
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
@@ -95,7 +111,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   Total Estimated Credits = Cost per lead * leadsCount
   \`\`\`
 
-### 3. Company Search (\`precept_search_companies\`)
+### 4. Company Search (\`precept_search_companies\`)
 - **Base Search**: \`1.0 credit / company\`
 - **Custom AI Queries (\`queries: [...]\`)**: \`+0.2 credits / company\` (for the entire queries array)
 - **Enrichments**:
@@ -120,7 +136,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   Total Estimated Credits = (1.0 base + queryCost + enrichmentCost) * limit
   \`\`\`
 
-### 4. Company Insights (\`precept_get_company_insights\`)
+### 5. Company Insights (\`precept_get_company_insights\`)
 - **Base Insights**: \`1.0 credit / company\`
 - **Custom Queries & Enrichments**: Same rates as Company Search above.
 - **Formula**:

@@ -442,37 +442,19 @@ export function registerAllTools(
             "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 15+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
           ),
         signal: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal("post_search"),
-              keywords: z
-                .array(z.string())
-                .min(1)
-                .max(5)
-                .describe(
-                  "1 to 5 keywords or phrases to search LinkedIn posts for.",
-                ),
-              timeframe: z
-                .enum(["day", "week", "month", "year"])
-                .optional()
-                .describe(
-                  "Timeframe for the posts search: 'day' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). Default: 'month'.",
-                ),
-            }),
-            z.object({
-              type: z.literal("post_interaction"),
-              keywords: z
-                .array(z.string())
-                .min(1)
-                .max(5)
-                .describe(
-                  "1 to 5 keywords or phrases to find leads who recently engaged (posted, liked, commented) with relevant content.",
-                ),
-            }),
-          ])
+          .object({
+            type: z.literal("post_interaction"),
+            keywords: z
+              .array(z.string())
+              .min(1)
+              .max(5)
+              .describe(
+                "1 to 5 keywords or phrases to find leads who recently engaged (posted, liked, commented) with relevant content.",
+              ),
+          })
           .optional()
           .describe(
-            "LinkedIn activity signal for discovering leads based on recent post activity. Choose one: 'post_search' (search recent posts matching keywords, returning authors and their posts) or 'post_interaction' (find people interacting with posts matching keywords). Adds +5 credits per lead.",
+            "Optional LinkedIn activity signal for filtering persona search. Finds leads matching your query who recently engaged with relevant posts. Adds +5 credits per lead. (For discovering leads directly from post authors matching keywords without a persona query, use precept_get_leads_from_post_search).",
           ),
         webhookUrl: z
           .string()
@@ -506,6 +488,99 @@ export function registerAllTools(
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "searching leads");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 1b. precept_get_leads_from_post_search
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_leads_from_post_search",
+    {
+      description:
+        "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
+        "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
+        "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
+        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. " +
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress.",
+      inputSchema: z.object({
+        keywords: z
+          .array(z.string())
+          .min(1)
+          .max(5)
+          .describe(
+            "1 to 5 keywords or phrases to search LinkedIn posts for (e.g. ['SEO problem', 'struggling with SEO']). Leads are discovered directly from authors of matching posts.",
+          ),
+        timeframe: z
+          .enum(["day", "week", "month", "year"])
+          .optional()
+          .describe(
+            "Timeframe of LinkedIn posts to search: 'day' (past 24h), 'week' (past week), 'month' (past month), or 'year' (past year). Default: 'month'.",
+          ),
+        limit: z
+          .number()
+          .max(1000)
+          .optional()
+          .describe(
+            "Maximum number of leads to return (max 1000). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. Always verify the user has sufficient credits before executing.",
+          ),
+        name: z
+          .string()
+          .optional()
+          .describe(
+            "A readable name for this enrichment job, used for searching on the Precept dashboard.",
+          ),
+        enrichType: z
+          .array(z.enum(["emails", "phones"]))
+          .optional()
+          .describe(
+            "Type of contact details to find. Options: 'emails' (+1 credit/lead), 'phones' (+10 credits/lead). Default: both (+11 credits/lead). Only used when includeContactDetails is true.",
+          ),
+        findInsights: z
+          .boolean()
+          .optional()
+          .describe(
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.1 credits per lead if true, 0.1 credits if false. Default: false.",
+          ),
+        includeContactDetails: z
+          .boolean()
+          .optional()
+          .describe(
+            "Whether to find and verify email addresses and phone numbers for discovered authors. Adds +1 credit for email, +10 for phone (or +11 for both) per person. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
+          ),
+        webhookUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "Optional webhook URL to receive enrichment results. NOTE: NOT needed for MCP assistant workflows. You can omit this and use precept_get_job_status with the returned enrichment_id to fetch the results directly.",
+          ),
+        streamingResults: z
+          .boolean()
+          .optional()
+          .describe(
+            "Optional. When true (and webhookUrl is provided), contact results are progressively streamed to the webhook as each lead is enriched.",
+          ),
+      }),
+      outputSchema: asyncJobInitOutputSchema,
+    },
+    async (args) => {
+      try {
+        console.log(
+          `[Tool] precept_get_leads_from_post_search starting... keywords=${JSON.stringify(args.keywords)}, limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`,
+        );
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/leads/post-search`,
+          args,
+          { headers: getHeaders() },
+        );
+        console.log(
+          `[Tool] precept_get_leads_from_post_search succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "getting leads from post search");
       }
     },
   );
