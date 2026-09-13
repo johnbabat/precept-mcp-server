@@ -190,4 +190,17 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - \`action: "resume"\`: Resume a paused campaign.
   - \`action: "archive"\` (or \`"cancel"\`): Archive an active or paused campaign to History, allowing upcoming queued campaigns to advance.
   - \`action: "remove"\`: Remove an upcoming campaign from the queue.
+
+### 6. Sending 1-on-1 Direct Messages via LinkedIn
+- Use \`precept_send_message\` to send a direct message to an individual lead:
+  - Pass \`recipient: { name, linkedinUrl, company, title }\` and \`message\`.
+  - **Dedicated Independent Delivery**: Direct messages run independently of bulk connection campaigns and do not block or interrupt active campaigns.
+  - **Smart Relationship Routing**:
+    - If the lead is already a 1st-degree connection, the extension delivers a **Direct Message (DM)** into their LinkedIn conversation.
+    - If the lead is not connected, the extension automatically routes the outreach as a **Connection Request with your message as a personal note** (capped at 200 chars).
+    - If an invitation is already pending, it safely notifies that an invite is already pending.
+  - Always advise keeping the message concise (under 200 characters) so it cleanly fits as a connection request note if the recipient is not yet connected.
+  - Returns a \`messageId\` and confirms dispatch.
+  - Use \`precept_get_message_status\` with \`messageId\` to check delivery confirmation and whether it delivered as a direct message or connection note.
+  - Requires the user's Precept Chrome extension to be active in Google Chrome.
 `;

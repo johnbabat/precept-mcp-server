@@ -265,9 +265,7 @@ const leadInputSchema = z.object({
   note: z
     .string()
     .optional()
-    .describe(
-      "Custom personalized connection note specifically for this lead",
-    ),
+    .describe("Custom personalized connection note specifically for this lead"),
 });
 
 const extensionStatusOutputSchema = z
@@ -324,6 +322,56 @@ const queueCampaignOutputSchema = z
   })
   .passthrough()
   .describe("Result of queuing the LinkedIn outreach campaign");
+
+const sendMessageOutputSchema = z
+  .object({
+    success: z.boolean(),
+    messageId: z.string().optional(),
+    recipient: z
+      .object({
+        name: z.string().optional(),
+        linkedinUrl: z.string().optional(),
+      })
+      .optional(),
+    status: z
+      .string()
+      .optional()
+      .describe("'pending' while awaiting extension check-in, or 'sent'"),
+    deliveryMethod: z.string().optional(),
+    message: z.string().optional(),
+    warning: z.string().optional(),
+  })
+  .passthrough()
+  .describe("Result of dispatching a LinkedIn message to a lead");
+
+const messageStatusOutputSchema = z
+  .object({
+    success: z.boolean(),
+    messageId: z.string(),
+    status: z
+      .string()
+      .describe("'pending', 'sent', 'already_pending', or 'failed'"),
+    deliveryMethod: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "'direct_message' (1st-degree connection) or 'connection_note' (fallback note)",
+      ),
+    recipient: z
+      .object({
+        name: z.string().optional(),
+        linkedinUrl: z.string().optional(),
+        company: z.string().optional(),
+        title: z.string().optional(),
+      })
+      .optional(),
+    queuedAt: z.string().optional(),
+    processedAt: z.string().nullable().optional(),
+    error: z.string().nullable().optional(),
+  })
+  .passthrough()
+  .describe("Current delivery status of a direct LinkedIn message");
 
 const outreachQueueOutputSchema = z
   .object({
@@ -1125,6 +1173,140 @@ export function registerAllTools(
         return formatError(
           error,
           `performing action '${action}' on campaign ${campaignId || "active"}`,
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 12. precept_send_message
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_send_message",
+    {
+      description:
+        "Send a direct message or outreach note to an individual LinkedIn lead via the Precept Chrome extension. " +
+        "If the lead is already a 1st-degree connection, it delivers as a direct message (DM). " +
+        "If the lead is not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars). " +
+        "Requires the user's Precept Chrome extension to be active in Google Chrome.",
+      inputSchema: z.object({
+        recipient: z
+          .object({
+            name: z
+              .string()
+              .describe("Full name of the recipient (e.g. 'Sarah Miller')."),
+            linkedinUrl: z
+              .string()
+              .describe(
+                "Full LinkedIn profile URL of the recipient (e.g. 'https://www.linkedin.com/in/sarahmiller').",
+              ),
+            company: z
+              .string()
+              .optional()
+              .describe("Company name of the lead (e.g. 'Stripe')."),
+            title: z
+              .string()
+              .optional()
+              .describe("Job title of the lead (e.g. 'VP of Engineering')."),
+          })
+          .describe("The lead to send the message to."),
+        message: z
+          .string()
+          .describe(
+            "The message text to send. Keep it concise (ideally under 200 characters) so it can cleanly fit as a connection request note if the recipient is not yet connected.",
+          ),
+        fallbackToConnectionNote: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe(
+            "Whether to automatically fall back to sending a connection request with this message as a note if the lead is not a 1st-degree connection. Defaults to true.",
+          ),
+      }),
+      outputSchema: sendMessageOutputSchema,
+    },
+    async ({ recipient, message, fallbackToConnectionNote }) => {
+      try {
+        console.log(
+          `[Tool] precept_send_message starting... recipient=${recipient?.name} (${recipient?.linkedinUrl})`,
+        );
+
+        // Extension liveness check
+        try {
+          const extCheck = await axios.get(
+            `${PRECEPT_API_URL}/v1/campaigns/extension-status`,
+            { headers: getHeaders() },
+          );
+          if (extCheck.data && !extCheck.data.active) {
+            return formatResponse({
+              success: false,
+              warning: "Extension Inactive",
+              message:
+                "The Precept Chrome extension is not active. Please ensure Google Chrome is open and logged into LinkedIn so the message can be delivered.",
+            });
+          }
+        } catch (extErr) {
+          console.warn(
+            "[Tool] precept_send_message extension check warning:",
+            extErr,
+          );
+        }
+
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/messages/send`,
+          {
+            recipient,
+            message,
+            fallbackToConnectionNote: fallbackToConnectionNote !== false,
+          },
+          { headers: getHeaders() },
+        );
+
+        console.log(
+          `[Tool] precept_send_message succeeded. messageId=${response.data?.messageId}, status=${response.data?.status}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `sending message to '${recipient?.name || "recipient"}'`,
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 13. precept_get_message_status
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_message_status",
+    {
+      description:
+        "Check the delivery status of a direct LinkedIn message previously dispatched via precept_send_message. " +
+        "Returns whether the message is pending, sent, already pending, or failed, along with the delivery method used ('direct_message' or 'connection_note').",
+      inputSchema: z.object({
+        messageId: z
+          .string()
+          .describe(
+            "The message ID returned by precept_send_message (e.g. 'msg_1726237000000_abc').",
+          ),
+      }),
+      outputSchema: messageStatusOutputSchema,
+    },
+    async ({ messageId }) => {
+      try {
+        console.log(
+          `[Tool] precept_get_message_status starting... messageId=${messageId}`,
+        );
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/messages/${messageId}`,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `checking delivery status for message '${messageId}'`,
         );
       }
     },
