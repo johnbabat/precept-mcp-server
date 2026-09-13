@@ -40,6 +40,12 @@ registerAllTools(server, SERVER_VERSION);
 
 const transportType = (process.env.MCP_TRANSPORT || "stdio").toLowerCase();
 
+// In stdio mode, stdout is strictly reserved for JSON-RPC protocol messages.
+// Redirect all console.log calls to stderr so logs do not corrupt the MCP protocol stream.
+if (transportType === "stdio") {
+  console.log = (...args: any[]) => console.error(...args);
+}
+
 // ──────────────────────────────────────────
 // Helper: resolve base URL from request
 // ──────────────────────────────────────────
