@@ -1186,9 +1186,12 @@ export function registerAllTools(
     {
       description:
         "Send a direct message or outreach note to an individual LinkedIn lead via the Precept Chrome extension. " +
+        "MANDATORY PRE-CHECK: Before calling this tool, you MUST first verify that the extension is active using `precept_get_extension_status`. " +
+        "MANDATORY POLLING RULE: Once dispatched, you MUST continuously poll `precept_get_message_status` up to 40 times (every 3 seconds) while status is 'pending'. " +
+        "If status becomes 'sent', 'already_pending', or 'failed', present the final outcome (including error details if failed). " +
+        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later. " +
         "If the lead is already a 1st-degree connection, it delivers as a direct message (DM). " +
-        "If the lead is not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars). " +
-        "Requires the user's Precept Chrome extension to be active in Google Chrome.",
+        "If the lead is not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars).",
       inputSchema: z.object({
         recipient: z
           .object({
@@ -1283,7 +1286,9 @@ export function registerAllTools(
     {
       description:
         "Check the delivery status of a direct LinkedIn message previously dispatched via precept_send_message. " +
-        "Returns whether the message is pending, sent, already pending, or failed, along with the delivery method used ('direct_message' or 'connection_note').",
+        "MANDATORY POLLING RULE: Poll this tool up to 40 times (every 3 seconds) while status is 'pending'. " +
+        "If status becomes 'sent', 'already_pending', or 'failed', present the final outcome (including error details if failed). " +
+        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later.",
       inputSchema: z.object({
         messageId: z
           .string()
