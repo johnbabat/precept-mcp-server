@@ -192,8 +192,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - \`action: "remove"\`: Remove an upcoming campaign from the queue.
 
 ### 6. Sending 1-on-1 Direct Messages via LinkedIn
-- **Mandatory Pre-Flight Extension Check**:
+- **Mandatory Pre-Flight Extension Check & Version Requirement**:
   - Before calling \`precept_send_message\`, the AI assistant **MUST first call \`precept_get_extension_status\`** to verify that the user's Precept Chrome extension is active (\`active === true\`).
+  - **Minimum Version v1.1.3**: Inspect \`extensionVersion\`. Direct messaging requires extension version **1.1.3 or higher**. If \`extensionVersion\` is below 1.1.3 (e.g. \`1.1.1\` or \`1.1.2\`), do NOT call \`precept_send_message\`; immediately inform the user:
+    > *"Direct messaging requires Precept Chrome extension v1.1.3 or higher. You are currently running v{extensionVersion}. Please update or reload your extension in \`chrome://extensions\` to enable direct messaging."*
   - If the extension is not active or not installed, do NOT send the message; instruct the user to ensure Google Chrome is open and logged into LinkedIn.
 - **Sending the Message**:
   - Use \`precept_send_message\` with \`recipient: { name, linkedinUrl, company, title }\` and \`message\`.

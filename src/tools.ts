@@ -1234,7 +1234,7 @@ export function registerAllTools(
           `[Tool] precept_send_message starting... recipient=${recipient?.name} (${recipient?.linkedinUrl})`,
         );
 
-        // Extension liveness check
+        // Extension liveness & version check
         try {
           const extCheck = await axios.get(
             `${PRECEPT_API_URL}/v1/campaigns/extension-status`,
@@ -1246,6 +1246,19 @@ export function registerAllTools(
               warning: "Extension Inactive",
               message:
                 "The Precept Chrome extension is not active. Please ensure Google Chrome is open and logged into LinkedIn so the message can be delivered.",
+            });
+          }
+          const ver = extCheck.data?.extensionVersion || "1.1.1";
+          const parts = ver.split(".").map((n: string) => parseInt(n, 10) || 0);
+          const isSupported =
+            parts[0] > 1 ||
+            (parts[0] === 1 && parts[1] > 1) ||
+            (parts[0] === 1 && parts[1] === 1 && (parts[2] || 0) >= 3);
+          if (extCheck.data?.installed && !isSupported) {
+            return formatResponse({
+              success: false,
+              warning: "Extension Update Required",
+              message: `Direct messaging requires Precept Chrome extension v1.1.3 or higher. You are currently running v${ver}. Please reload or update the extension from chrome://extensions.`,
             });
           }
         } catch (extErr) {
