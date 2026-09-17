@@ -487,7 +487,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 15+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
+            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 140+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
           ),
         signal: z
           .object({
