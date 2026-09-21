@@ -86,6 +86,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ### 2. Post Search (\`precept_get_leads_from_post_search\`)
 - Discovers leads directly from authors who recently published LinkedIn posts matching keywords (without needing a persona query).
+- **Keyword Generation Guidelines**:
+  - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\`).
+  - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'my team is hiring our first marketing hire snack brand'\`) as long phrases drastically lower search engine recall.
+  - **Role Hiring Searches**: If the user is specifically searching for people hiring for a role, use \`"hiring" + specified role\` and generate 4 other similar phrases and very similar roles (e.g. for React: \`['"hiring" "React"', '"hiring" "frontend engineer"', '"we are hiring" "React developer"', '"hiring" "software engineer"', '"join our team" "React"']\`).
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
 - **Post Search Activity Signal**: \`+5.0 credits / lead\`
