@@ -14,10 +14,11 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ## 🚨 MANDATORY WORKFLOW RULES FOR AI ASSISTANTS
 
-### 1. Default Search Limit (30 Items on First Attempt) & Asking for More
+### 1. Default Search Limit (30 Items on First Attempt) & Presenting Results
 - Unless the user specifically asks for a specific number of leads or companies to return, **by default return only 30 on the first try**.
 - Do not ask the user for a count upfront if unspecified; proceed with the default batch of 30.
 - If the user specifically asks for a specific number (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
+- **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document).
 - After presenting the first batch of results (up to 30), **always ask the user if they want more results**.
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
@@ -46,6 +47,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - While waiting and polling for results, the AI assistant **MUST provide updates to the user on what is happening at least every 15 polls (~1 minute)** (e.g. current poll attempt count, elapsed time, current status, and progress metrics such as \`progress.completed\` / \`progress.total\` items processed if available).
 - **Job Completion & 10-Minute Timeout Handling**:
   - Once \`precept_get_job_status\` returns \`status: "completed"\`, retrieve and present the results clearly to the user.
+  - **Always Output in a Sheet Doc**: When presenting completed lead or company results to the user (from \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`), **ALWAYS try to give users the results in a sheet doc** (spreadsheet document / sheet artifact) containing all discovered leads or companies with their relevant columns (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone, Post URL/Snippet for leads; and Company Name, Website, LinkedIn URL, Industry, Employee Count, Location for companies).
   - If the job reaches **150 poll attempts (~10 minutes)** and is still in progress, stop polling and tell the user to check back in a few minutes as this is taking longer than usual (provide the \`jobId\` so they can track it).
   - If the job fails (\`status: "failed"\`), notify the user immediately with the \`jobId\` and any error details.
 

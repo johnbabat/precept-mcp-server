@@ -451,7 +451,8 @@ export function registerAllTools(
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
+        "Upon completion, always try to give users the lead results in a sheet doc.",
       inputSchema: z.object({
         query: z
           .string()
@@ -553,7 +554,8 @@ export function registerAllTools(
         "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'my team is hiring our first marketing hire snack brand') as long phrases drastically lower search engine recall. " +
         "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. for React: ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']). " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress. " +
+        "Upon completion, always try to give users the lead results in a sheet doc.",
       inputSchema: z.object({
         keywords: z
           .array(z.string())
@@ -648,7 +650,8 @@ export function registerAllTools(
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
+        "Upon completion, always try to give users the lead results in a sheet doc.",
       inputSchema: z.object({
         leads: z
           .array(
@@ -765,7 +768,8 @@ export function registerAllTools(
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
         "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
+        "Upon completion, always try to give users the company results in a sheet doc.",
       inputSchema: z.object({
         companies: z
           .array(
@@ -842,7 +846,8 @@ export function registerAllTools(
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed.",
+        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
+        "Upon completion, always try to give users the company results in a sheet doc.",
       inputSchema: z.object({
         query: z
           .string()
@@ -901,7 +906,7 @@ export function registerAllTools(
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
         "MANDATORY POLLING RULE: Continue to poll this tool every 4 seconds for up to 150 attempts (~10 minutes) as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every 15 polls (~1 minute) until completed. " +
         "If the job reaches 150 attempts (~10 minutes) and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
-        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done.",
+        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. When completed, always try to give users the lead or company results in a sheet doc.",
       inputSchema: z.object({
         jobId: z
           .string()
