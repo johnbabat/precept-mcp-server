@@ -551,7 +551,7 @@ export function registerAllTools(
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
         "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
         "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'my team is hiring our first marketing hire snack brand') as long phrases drastically lower search engine recall. " +
-        "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use '\"hiring\" + specified role' and generate 4 other similar phrases and very similar roles (e.g. for React: ['\"hiring\" \"React\"', '\"hiring\" \"frontend engineer\"', '\"we are hiring\" \"React developer\"', '\"hiring\" \"software engineer\"', '\"join our team\" \"React\"']). " +
+        "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. for React: ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']). " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress.",
       inputSchema: z.object({
@@ -562,7 +562,7 @@ export function registerAllTools(
           .describe(
             "1 to 5 concise keywords or phrases to search LinkedIn posts for (e.g. ['SEO problem', 'struggling with SEO']). " +
             "Keep phrases short (1-3 words) to maximize search recall. Avoid full sentences or conversational filler. " +
-            "If searching for people hiring in a role, use '\"hiring\" + specified role' and generate 4 other similar phrases and very similar roles (e.g. ['\"hiring\" \"React\"', '\"hiring\" \"frontend engineer\"', '\"we are hiring\" \"React developer\"', '\"hiring\" \"software engineer\"', '\"join our team\" \"React\"']).",
+            "If searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']).",
           ),
         timeframe: z
           .enum(["day", "week", "month", "year"])
