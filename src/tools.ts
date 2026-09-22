@@ -452,7 +452,8 @@ export function registerAllTools(
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the lead results in a sheet doc. In the follow-up, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "Upon completion, always try to give users the lead results in a sheet doc. " +
+        "If you searched only default 30 leads on the first run, in the follow-up, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         query: z
           .string()
@@ -556,7 +557,8 @@ export function registerAllTools(
         "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. for React: ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']). " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress. " +
-        "Upon completion, always try to give users the lead results in a sheet doc. In the follow-up, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "Upon completion, always try to give users the lead results in a sheet doc. " +
+        "If you searched only default 30 leads on the first run, in the follow-up, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         keywords: z
           .array(z.string())
@@ -564,15 +566,15 @@ export function registerAllTools(
           .max(5)
           .describe(
             "1 to 5 concise keywords or phrases to search LinkedIn posts for (e.g. ['SEO problem', 'struggling with SEO']). " +
-            "Keep phrases short (1-3 words) to maximize search recall. Avoid full sentences or conversational filler. " +
-            "If searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']).",
+              "Keep phrases short (1-3 words) to maximize search recall. Avoid full sentences or conversational filler. " +
+              "If searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']).",
           ),
         timeframe: z
           .enum(["day", "week", "month", "year"])
           .optional()
           .describe(
             "Timeframe of LinkedIn posts to search: 'day' (past 24h), 'week' (past week), 'month' (past month), or 'year' (past year). " +
-            "CRITICAL: Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('day'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
+              "Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('day'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
           ),
         limit: z
           .number()
@@ -909,7 +911,8 @@ export function registerAllTools(
         "MANDATORY POLLING RULE: Continue to poll this tool every 4 seconds for up to 150 attempts (~10 minutes) as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every 15 polls (~1 minute) until completed. " +
         "If the job reaches 150 attempts (~10 minutes) and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
         "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. " +
-        "When completed, always try to give users the lead or company results in a sheet doc. For lead results, first state in the follow-up that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "When completed, always try to give users the lead or company results in a sheet doc. " +
+        "For lead results, if you searched only default 30 leads on the first run, in the follow-up, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         jobId: z
           .string()
