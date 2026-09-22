@@ -552,7 +552,7 @@ export function registerAllTools(
         "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
         "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
-        "CRITICAL TIMEFRAME RULE: Do NOT silently default to 'month'. When a user asks to search posts without specifying a timeframe, the ONLY question you may ask the user upfront is their preferred timeframe: past 24 hours ('day'), past week ('week'), or past month ('month'). DO NOT mention that you are searching for 30 leads or ask about volume upfront, and DO NOT ask if they want contact details (emails/phones) upfront. Silently default to 30 leads and without contact details. All other questions must come AFTER the first result is returned. " +
+        "CRITICAL TIMEFRAME RULE: Do NOT silently default to 'month'. When a user asks to search posts without specifying a timeframe, the ONLY question you may ask the user upfront is their preferred timeframe: past 24 hours ('24h'), past week ('week'), or past month ('month'). DO NOT mention that you are searching for 30 leads or ask about volume upfront, and DO NOT ask if they want contact details (emails/phones) upfront. Silently default to 30 leads and without contact details. All other questions must come AFTER the first result is returned. " +
         "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'my team is hiring our first marketing hire snack brand') as long phrases drastically lower search engine recall. " +
         "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. for React: ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']). " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Silently default to 30 on the first attempt without asking about count. " +
@@ -570,11 +570,11 @@ export function registerAllTools(
               "If searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']).",
           ),
         timeframe: z
-          .enum(["day", "week", "month", "year"])
+          .enum(["24h", "day", "week", "month", "year"])
           .optional()
           .describe(
-            "Timeframe of LinkedIn posts to search: 'day' (past 24h), 'week' (past week), 'month' (past month), or 'year' (past year). " +
-              "Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('day'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
+            "Timeframe of LinkedIn posts to search: '24h' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). 'day' is also accepted for backward compatibility. " +
+              "Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('24h'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
           ),
         limit: z
           .number()
@@ -628,9 +628,15 @@ export function registerAllTools(
         console.log(
           `[Tool] precept_get_leads_from_post_search starting... keywords=${JSON.stringify(args.keywords)}, limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`,
         );
+        const payload = {
+          ...args,
+          ...(args.timeframe
+            ? { timeframe: args.timeframe === "day" ? "24h" : args.timeframe }
+            : {}),
+        };
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/leads/post-search`,
-          args,
+          payload,
           { headers: getHeaders() },
         );
         console.log(

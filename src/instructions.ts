@@ -50,7 +50,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
     - **DO NOT** tell the user you will search for 30 leads or ask them for a volume/limit.
     - **DO NOT** ask the user if they want contact details (emails or phones).
     - Give the user **ONLY the options to select the timeframe**. All other questions must come **AFTER** the first result is returned.
-  - **DO NOT silently default to \`month\`**: If the user did not specify a timeframe, always ask them first. If they already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that timeframe (\`day\`, \`week\`, or \`month\`) and proceed immediately without asking.
+  - **DO NOT silently default to \`month\`**: If the user did not specify a timeframe, always ask them first. If they already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that timeframe (\`24h\`, \`week\`, or \`month\`) and proceed immediately without asking.
 
 ### 6. Asynchronous Job Handling & Polling Rules
 - All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
@@ -108,7 +108,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Discovers leads directly from authors who recently published LinkedIn posts matching keywords (without needing a persona query).
 - **Timeframe Selection Guidelines**:
   - **DO NOT silently default to \`month\`**.
-  - If the user did not specify a timeframe in their prompt, **ALWAYS ask the user** whether they want to search posts from within the past 24 hours (\`day\`), past week (\`week\`), or past month (\`month\`) before calling the tool.
+  - If the user did not specify a timeframe in their prompt, **ALWAYS ask the user** whether they want to search posts from within the past 24 hours (\`24h\`), past week (\`week\`), or past month (\`month\`) before calling the tool.
 - **Keyword Generation Guidelines**:
   - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\`).
   - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'my team is hiring our first marketing hire snack brand'\`) as long phrases drastically lower search engine recall.
