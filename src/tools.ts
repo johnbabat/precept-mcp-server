@@ -569,6 +569,13 @@ export function registerAllTools(
               "Keep phrases short (1-3 words) to maximize search recall. Avoid full sentences or conversational filler. " +
               "If searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']).",
           ),
+        description: z
+          .string()
+          .optional()
+          .describe(
+            "A clear, detailed description of what the user is searching for (e.g. 'Hiring marketing, sales, or product leaders at supplement brands'). " +
+              "This is analyzed by AI to filter candidate posts for authentic hiring intent and role relevance.",
+          ),
         timeframe: z
           .enum(["24h", "day", "week", "month", "year"])
           .optional()
