@@ -14,12 +14,14 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ## 🚨 MANDATORY WORKFLOW RULES FOR AI ASSISTANTS
 
-### 1. Default Search Limit (30 Items on First Attempt) & Presenting Results
+### 1. Default Search Limit (30 Items on First Attempt), Presenting Results & Follow-Up Options
 - Unless the user specifically asks for a specific number of leads or companies to return, **by default return only 30 on the first try**.
 - Do not ask the user for a count upfront if unspecified; proceed with the default batch of 30.
 - If the user specifically asks for a specific number (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
-- **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document).
-- After presenting the first batch of results (up to 30), **always ask the user if they want more results**.
+- **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document / sheet artifact).
+- **Mandatory Follow-Up After Returning Results**: After presenting the results (the first batch of 30 or any batch), the AI assistant **MUST ask the user**:
+  1. **If they want to find more leads**, and ask them to **specify how many more** they would like to find.
+  2. **Or if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
 - Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
@@ -38,7 +40,15 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Finding verified contact details (especially phone numbers) consumes significantly more credits (+1 for emails, +10 for phones, or +11 for both per person) and increases waterfall search time.
 - Only set \`includeContactDetails: true\` (or specify contact \`enrichType\`) if the user **explicitly asks for contact information** (e.g. "find their emails", "get phone numbers", "with contact details", "enrich contact info").
 
-### 5. Asynchronous Job Handling & Polling Rules
+### 5. Always Ask for Post Search Timeframe (Do NOT Default to Month)
+- When a user asks to search for posts or discover leads from LinkedIn posts (using \`precept_get_leads_from_post_search\`):
+  - **DO NOT silently default to \`month\`**.
+  - If the user already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that specified timeframe (\`day\`, \`week\`, or \`month\`).
+  - If the user did **NOT** specify a timeframe, the AI assistant **MUST ask the user first** before calling \`precept_get_leads_from_post_search\`:
+    > *"Would you like to search posts from within the past 24 hours, the past week, or the past month?"*
+  - Only execute \`precept_get_leads_from_post_search\` once the user has chosen or confirmed their preferred timeframe.
+
+### 6. Asynchronous Job Handling & Polling Rules
 - All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
 - **Continuous Polling Requirement (150 attempts, every 4 seconds = 10 minutes max)**:
   - Once a search or enrichment job is initiated, the AI assistant **MUST continuously poll \`precept_get_job_status\` every 4 seconds for up to 150 attempts** (totaling up to 10 minutes) as long as the job is still in progress (\`pending\`, \`processing\`, or \`in_progress\`).
@@ -48,22 +58,25 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - **Job Completion & 10-Minute Timeout Handling**:
   - Once \`precept_get_job_status\` returns \`status: "completed"\`, retrieve and present the results clearly to the user.
   - **Always Output in a Sheet Doc**: When presenting completed lead or company results to the user (from \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`), **ALWAYS try to give users the results in a sheet doc** (spreadsheet document / sheet artifact) containing all discovered leads or companies with their relevant columns (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone, Post URL/Snippet for leads; and Company Name, Website, LinkedIn URL, Industry, Employee Count, Location for companies).
+  - **Mandatory Follow-Up Questions**: Immediately after presenting lead results, **always ask the user**:
+    1. If they want to find more leads (and to specify how many more).
+    2. Or if they want to enrich the contacts' phone numbers or email addresses.
   - If the job reaches **150 poll attempts (~10 minutes)** and is still in progress, stop polling and tell the user to check back in a few minutes as this is taking longer than usual (provide the \`jobId\` so they can track it).
   - If the job fails (\`status: "failed"\`), notify the user immediately with the \`jobId\` and any error details.
 
-### 6. Server Versioning & Client Sync
-- Your instructions and tool schemas are configured for Precept MCP **v${SERVER_VERSION}**.
+### 7. Server Versioning & Client Sync
+- Your instructions and tool schemas are configured for Precept MCP **v\${SERVER_VERSION}**.
 - Tools return \`versionStatus\` (e.g. in \`precept_check_credits\` and \`precept_check_version\`) with the running \`serverVersion\`.
-- If the returned \`serverVersion\` is higher than your configured version (v${SERVER_VERSION}), inform the user that their client connection is behind:
+- If the returned \`serverVersion\` is higher than your configured version (v\${SERVER_VERSION}), inform the user that their client connection is behind:
   > *"Tip: The Precept MCP server has been updated to a newer version. Please refresh your connection to sync the latest tools and features: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
 
-### 7. Handling Schema Validation Errors
+### 8. Handling Schema Validation Errors
 - If you ever receive an \`InvalidParams\`, \`Input validation error\`, or \`Output validation error\` (e.g. MCP error -32602) from any tool, it means your tool schemas are out of sync with the server.
 - **DO NOT attempt to guess the parameters or retry the same request.**
 - Immediately notify the user:
   > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
 
-### 8. Role Limit (Maximum 40 Combined Departments and Job Titles)
+### 9. Role Limit (Maximum 40 Combined Departments and Job Titles)
 - When specifying \`departments\` and/or \`jobTitles\` for \`precept_get_company_insights\`, the total combined sum must never exceed 40 (\`departments.length + jobTitles.length <= 40\`).
 - If more than 40 roles are requested, narrow them down to the top 40 most relevant roles to avoid a 400 Bad Request error from the API.
 
@@ -88,6 +101,9 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ### 2. Post Search (\`precept_get_leads_from_post_search\`)
 - Discovers leads directly from authors who recently published LinkedIn posts matching keywords (without needing a persona query).
+- **Timeframe Selection Guidelines**:
+  - **DO NOT silently default to \`month\`**.
+  - If the user did not specify a timeframe in their prompt, **ALWAYS ask the user** whether they want to search posts from within the past 24 hours (\`day\`), past week (\`week\`), or past month (\`month\`) before calling the tool.
 - **Keyword Generation Guidelines**:
   - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\`).
   - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'my team is hiring our first marketing hire snack brand'\`) as long phrases drastically lower search engine recall.

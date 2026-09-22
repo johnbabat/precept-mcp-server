@@ -450,9 +450,9 @@ export function registerAllTools(
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
-        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
+        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the lead results in a sheet doc.",
+        "Upon completion, always try to give users the lead results in a sheet doc, and ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         query: z
           .string()
@@ -551,11 +551,12 @@ export function registerAllTools(
         "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
         "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
+        "CRITICAL TIMEFRAME RULE: Do NOT silently default to 'month'. When a user asks to search posts without specifying a timeframe, ALWAYS ask the user first whether they want to search posts from within the past 24 hours ('day'), past week ('week'), or past month ('month'). Only execute the search once the user confirms their preferred timeframe (or if they explicitly provided it in their prompt). " +
         "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'my team is hiring our first marketing hire snack brand') as long phrases drastically lower search engine recall. " +
         "ROLE HIRING SEARCHES: If specifically searching for people hiring in a role, use 'hiring + specified role' and generate 4 other similar phrases and very similar roles as plain strings without quotes inside the strings (e.g. for React: ['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']). " +
-        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. " +
+        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Unless the user specifies a count, default to 30 on the first attempt. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress. " +
-        "Upon completion, always try to give users the lead results in a sheet doc.",
+        "Upon completion, always try to give users the lead results in a sheet doc, and ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         keywords: z
           .array(z.string())
@@ -570,7 +571,8 @@ export function registerAllTools(
           .enum(["day", "week", "month", "year"])
           .optional()
           .describe(
-            "Timeframe of LinkedIn posts to search: 'day' (past 24h), 'week' (past week), 'month' (past month), or 'year' (past year). Default: 'month'.",
+            "Timeframe of LinkedIn posts to search: 'day' (past 24h), 'week' (past week), 'month' (past month), or 'year' (past year). " +
+            "CRITICAL: Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('day'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
           ),
         limit: z
           .number()
@@ -906,7 +908,8 @@ export function registerAllTools(
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
         "MANDATORY POLLING RULE: Continue to poll this tool every 4 seconds for up to 150 attempts (~10 minutes) as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every 15 polls (~1 minute) until completed. " +
         "If the job reaches 150 attempts (~10 minutes) and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
-        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. When completed, always try to give users the lead or company results in a sheet doc.",
+        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. " +
+        "When completed, always try to give users the lead or company results in a sheet doc. For lead results, always ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
       inputSchema: z.object({
         jobId: z
           .string()
