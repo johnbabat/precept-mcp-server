@@ -19,9 +19,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Do not ask the user for a count upfront if unspecified; proceed with the default batch of 30.
 - If the user specifically asks for a specific number (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
 - **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document / sheet artifact).
-- **Mandatory Follow-Up After Returning Results**: After presenting the results (the first batch of 30 or any batch), the AI assistant **MUST ask the user**:
-  1. **If they want to find more leads**, and ask them to **specify how many more** they would like to find.
-  2. **Or if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
+- **Mandatory Follow-Up After Returning Results**: When presenting the results of an initial search:
+  1. **First, explicitly tell the user that you only searched for 30 leads on this initial run**.
+  2. **Then, ask them if they want to find more leads**, asking them to **specify how many more** they would like to find.
+  3. **Also ask if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
 - Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
@@ -58,9 +59,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - **Job Completion & 10-Minute Timeout Handling**:
   - Once \`precept_get_job_status\` returns \`status: "completed"\`, retrieve and present the results clearly to the user.
   - **Always Output in a Sheet Doc**: When presenting completed lead or company results to the user (from \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`), **ALWAYS try to give users the results in a sheet doc** (spreadsheet document / sheet artifact) containing all discovered leads or companies with their relevant columns (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone, Post URL/Snippet for leads; and Company Name, Website, LinkedIn URL, Industry, Employee Count, Location for companies).
-  - **Mandatory Follow-Up Questions**: Immediately after presenting lead results, **always ask the user**:
-    1. If they want to find more leads (and to specify how many more).
-    2. Or if they want to enrich the contacts' phone numbers or email addresses.
+  - **Mandatory Follow-Up Questions**: Immediately after presenting lead results, **always**:
+    1. First explicitly tell the user that you only searched for 30 leads on this initial run.
+    2. Then ask if they want to find more leads (and to specify how many more).
+    3. Ask if they want to enrich the contacts' phone numbers or email addresses.
   - If the job reaches **150 poll attempts (~10 minutes)** and is still in progress, stop polling and tell the user to check back in a few minutes as this is taking longer than usual (provide the \`jobId\` so they can track it).
   - If the job fails (\`status: "failed"\`), notify the user immediately with the \`jobId\` and any error details.
 
