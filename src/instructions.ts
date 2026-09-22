@@ -112,7 +112,6 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - **Keyword Generation Guidelines**:
   - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\`).
   - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'my team is hiring our first marketing hire snack brand'\`) as long phrases drastically lower search engine recall.
-  - **Role Hiring Searches**: If the user is specifically searching for people hiring for a role, use \`hiring + specified role\` and generate 4 other similar phrases and very similar roles as plain strings WITHOUT literal quotation marks inside the strings (e.g. for React: \`['hiring React', 'hiring frontend engineer', 'we are hiring React developer', 'hiring software engineer', 'join our team React']\`).
 - **Search Description Guideline**:
   - Always provide a clear, comprehensive \`description\` parameter explaining what the user is searching for (e.g. "Hiring marketing, sales, or product leaders in DTC supplement brands"). This is analyzed by AI to filter candidate posts for authentic hiring intent and role relevance.
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
