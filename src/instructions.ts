@@ -14,13 +14,13 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ## 🚨 MANDATORY WORKFLOW RULES FOR AI ASSISTANTS
 
-### 1. Default Search Limit (30 Items on First Attempt), Presenting Results & Follow-Up Options
+### 1. Default Search Limit (30 Items on First Attempt) & Follow-Up Options
 - Unless the user specifically asks for a specific number of leads or companies to return, **by default return only 30 on the first try**.
-- Do not ask the user for a count upfront if unspecified; proceed with the default batch of 30.
-- If the user specifically asks for a specific number (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
+- **DO NOT mention or ask about volume upfront**: Silently use the default of 30 leads. **DO NOT tell the user you are defaulting to 30 leads, and DO NOT ask how many leads they want before running the search.**
+- If the user specifically asks for a specific number in their initial message (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
 - **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document / sheet artifact).
-- **Mandatory Follow-Up After Returning Results**: When presenting the results of an initial search:
-  1. **If you searched only default 30 leads on the first run, first explicitly tell the user that you only searched for 30 leads on this initial run**.
+- **Mandatory Follow-Up AFTER Returning Results**: All volume and enrichment questions must come **AFTER** the first result is sent back to the user:
+  1. **First, explicitly tell the user that you only searched for 30 leads on this initial run**.
   2. **Then, ask them if they want to find more leads**, asking them to **specify how many more** they would like to find.
   3. **Also ask if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
 
@@ -36,18 +36,21 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - Explain that Precept automatically scales down results to return only what their credits can cover (or fails if balance is 0).
   - Confirm with the user if they would like to proceed with the capped limit or reduce their request parameters.
 
-### 4. Do Not Enrich Contact Details Unless Explicitly Requested
+### 4. Do Not Enrich Contact Details Unless Explicitly Requested (Never Ask Upfront)
 - By default, do **NOT** enable contact details enrichment (\`includeContactDetails: false\` or omitted) for lead or company searches/insights.
 - Finding verified contact details (especially phone numbers) consumes significantly more credits (+1 for emails, +10 for phones, or +11 for both per person) and increases waterfall search time.
-- Only set \`includeContactDetails: true\` (or specify contact \`enrichType\`) if the user **explicitly asks for contact information** (e.g. "find their emails", "get phone numbers", "with contact details", "enrich contact info").
+- **DO NOT ask the user upfront if they want contact details (emails or phones)** before executing the initial search. Proceed with basic lead discovery first.
+- Only enable contact details if the user **explicitly asked for contact info in their initial prompt** (e.g. "find their emails", "get phone numbers", "with contact details"). Otherwise, offer contact enrichment **AFTER** presenting the initial search results.
 
-### 5. Always Ask for Post Search Timeframe (Do NOT Default to Month)
+### 5. Always Ask for Post Search Timeframe (The ONLY Upfront Question Allowed)
 - When a user asks to search for posts or discover leads from LinkedIn posts (using \`precept_get_leads_from_post_search\`):
-  - **DO NOT silently default to \`month\`**.
-  - If the user already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that specified timeframe (\`day\`, \`week\`, or \`month\`).
-  - If the user did **NOT** specify a timeframe, the AI assistant **MUST ask the user first** before calling \`precept_get_leads_from_post_search\`:
+  - **The ONLY question you may ask the user upfront is the timeframe**:
     > *"Would you like to search posts from within the past 24 hours, the past week, or the past month?"*
-  - Only execute \`precept_get_leads_from_post_search\` once the user has chosen or confirmed their preferred timeframe.
+  - **STRICT PROHIBITION**:
+    - **DO NOT** tell the user you will search for 30 leads or ask them for a volume/limit.
+    - **DO NOT** ask the user if they want contact details (emails or phones).
+    - Give the user **ONLY the options to select the timeframe**. All other questions must come **AFTER** the first result is returned.
+  - **DO NOT silently default to \`month\`**: If the user did not specify a timeframe, always ask them first. If they already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that timeframe (\`day\`, \`week\`, or \`month\`) and proceed immediately without asking.
 
 ### 6. Asynchronous Job Handling & Polling Rules
 - All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
