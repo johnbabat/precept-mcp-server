@@ -581,6 +581,13 @@ export function registerAllTools(
             "Timeframe of LinkedIn posts to search: '24h' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). 'day' is also accepted for backward compatibility. " +
               "Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('24h'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
           ),
+        location: z
+          .string()
+          .optional()
+          .describe(
+            "Optional target location/country to filter post authors by (e.g. 'United States', 'US', 'UK', 'Canada'). " +
+              "Filters authors by verified profile location/country in real-time.",
+          ),
         limit: z
           .number()
           .max(1000)
