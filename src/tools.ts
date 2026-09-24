@@ -437,6 +437,43 @@ const manageQueueOutputSchema = z
   .passthrough()
   .describe("Result of managing outreach campaign lifecycle");
 
+const subscriptionCompanySchema = z
+  .object({
+    companyName: z.string().describe("Name of the company."),
+    companyWebsite: z
+      .string()
+      .optional()
+      .describe(
+        "Official company website domain or URL (e.g. 'stripe.com'). Recommended for accurate matching.",
+      ),
+    companyLinkedin: z
+      .string()
+      .optional()
+      .describe(
+        "Company LinkedIn URL (e.g. 'https://linkedin.com/company/stripe').",
+      ),
+  })
+  .describe("Company to monitor for job postings.");
+
+const subscriptionOutputSchema = z
+  .object({
+    success: z.boolean().optional(),
+    message: z.string().optional(),
+    subscription: z.any().optional(),
+    latestResult: z.any().optional(),
+    count: z.number().optional(),
+  })
+  .passthrough()
+  .describe("Subscription details and latest findings");
+
+const subscriptionListOutputSchema = z
+  .object({
+    subscriptions: z.array(z.any()).optional(),
+    count: z.number().optional(),
+  })
+  .passthrough()
+  .describe("List of user's job posting subscriptions");
+
 export function registerAllTools(
   server: McpServer,
   serverVersion: string = SERVER_VERSION,
@@ -1358,6 +1395,264 @@ export function registerAllTools(
         return formatError(
           error,
           `checking delivery status for message '${messageId}'`,
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 14. precept_create_job_posting_subscription
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_create_job_posting_subscription",
+    {
+      description:
+        "Create an automated recurring subscription to monitor target companies for active job postings and discover matching decision makers for those roles. " +
+        "Precept checks for open positions in the specified departments or job titles on your chosen cadence (every 7 to 30 days, default 7). When open positions are found, it discovers up to 10 key decision makers for those exact roles. " +
+        "Guarantees automatic lead deduplication: previously returned decision makers are never re-fetched or charged on recurring runs. " +
+        "Supports 'runImmediately: true' (default: true) to start the first search run right away. " +
+        "Results can be fetched via 'precept_get_job_posting_subscription' or delivered automatically to an optional 'webhookUrl'. " +
+        "You can monitor up to 100 companies per subscription. Total combined departments and jobTitles must not exceed 40.",
+      inputSchema: z.object({
+        name: z
+          .string()
+          .optional()
+          .describe(
+            "A readable name for this subscription (e.g. 'Fintech Underwriting Hiring').",
+          ),
+        companies: z
+          .array(subscriptionCompanySchema)
+          .min(1)
+          .max(100)
+          .describe(
+            "Array of up to 100 companies to monitor. Each company must include 'companyName' and at least 'companyWebsite' or 'companyLinkedin'.",
+          ),
+        departments: z
+          .array(z.string())
+          .max(40)
+          .optional()
+          .describe(
+            "Departments to monitor for active job openings (e.g. ['Underwriting', 'Claims', 'Sales', 'Engineering']).",
+          ),
+        jobTitles: z
+          .array(z.string())
+          .max(40)
+          .optional()
+          .describe(
+            "Specific job titles to monitor (e.g. ['Underwriting Lead', 'VP Sales']).",
+          ),
+        frequencyDays: z
+          .number()
+          .min(7)
+          .max(30)
+          .optional()
+          .describe(
+            "Cadence in days between automated checks. Minimum 7 days, maximum 30 days. Default: 7 (weekly).",
+          ),
+        runImmediately: z
+          .boolean()
+          .optional()
+          .describe(
+            "Whether to immediately start the first run upon creation (default: true).",
+          ),
+        webhookUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "Optional webhook URL where findings will be POSTed on each completed run.",
+          ),
+      }),
+      outputSchema: subscriptionOutputSchema,
+    },
+    async (args) => {
+      try {
+        console.log(
+          `[Tool] precept_create_job_posting_subscription starting... companiesCount=${args.companies?.length}, name='${args.name || "unnamed"}'`,
+        );
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
+          args,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "creating job posting subscription");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 15. precept_get_job_posting_subscription
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_job_posting_subscription",
+    {
+      description:
+        "Retrieve a job posting subscription by ID, including its configuration, active status, cadence, and latest findings (active job postings and discovered decision makers). " +
+        "Returns the most recent batch of results found for each monitored company.",
+      inputSchema: z.object({
+        subscriptionId: z
+          .string()
+          .describe("The unique ID of the subscription to retrieve."),
+      }),
+      outputSchema: subscriptionOutputSchema,
+    },
+    async ({ subscriptionId }) => {
+      try {
+        console.log(
+          `[Tool] precept_get_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
+        );
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `fetching job posting subscription '${subscriptionId}'`,
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 16. precept_update_job_posting_subscription
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_update_job_posting_subscription",
+    {
+      description:
+        "Update an existing job posting subscription. Allows adding or removing companies, changing target departments or job titles, updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
+      inputSchema: z.object({
+        subscriptionId: z
+          .string()
+          .describe("The unique ID of the subscription to update."),
+        name: z.string().optional().describe("Updated name for the subscription."),
+        companies: z
+          .array(subscriptionCompanySchema)
+          .max(100)
+          .optional()
+          .describe(
+            "Replace the full list of monitored companies with this array (max 100).",
+          ),
+        addCompanies: z
+          .array(subscriptionCompanySchema)
+          .optional()
+          .describe(
+            "Append new companies to the existing monitored list (total cannot exceed 100).",
+          ),
+        removeCompanyWebsites: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "List of company website domains to remove from the monitored list.",
+          ),
+        departments: z
+          .array(z.string())
+          .max(40)
+          .optional()
+          .describe("Updated list of departments to monitor."),
+        jobTitles: z
+          .array(z.string())
+          .max(40)
+          .optional()
+          .describe("Updated list of job titles to monitor."),
+        frequencyDays: z
+          .number()
+          .min(7)
+          .max(30)
+          .optional()
+          .describe("Updated cadence in days (7 to 30)."),
+        webhookUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "Updated webhook URL, or empty string to disable webhook delivery.",
+          ),
+        status: z
+          .enum(["active", "paused"])
+          .optional()
+          .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt."),
+      }),
+      outputSchema: subscriptionOutputSchema,
+    },
+    async ({ subscriptionId, ...updateFields }) => {
+      try {
+        console.log(
+          `[Tool] precept_update_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
+        );
+        const response = await axios.patch(
+          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+          updateFields,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `updating job posting subscription '${subscriptionId}'`,
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 17. precept_list_job_posting_subscriptions
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_list_job_posting_subscriptions",
+    {
+      description:
+        "List all job posting subscriptions created for your account, showing monitored companies, status ('active', 'paused', 'insufficient_credits'), and run schedule.",
+      inputSchema: z.object({}),
+      outputSchema: subscriptionListOutputSchema,
+    },
+    async () => {
+      try {
+        console.log("[Tool] precept_list_job_posting_subscriptions starting...");
+        const response = await axios.get(
+          `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "listing job posting subscriptions");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 18. precept_delete_job_posting_subscription
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_delete_job_posting_subscription",
+    {
+      description:
+        "Cancel and permanently delete an automated job posting subscription.",
+      inputSchema: z.object({
+        subscriptionId: z
+          .string()
+          .describe("The unique ID of the subscription to delete."),
+      }),
+      outputSchema: subscriptionOutputSchema,
+    },
+    async ({ subscriptionId }) => {
+      try {
+        console.log(
+          `[Tool] precept_delete_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
+        );
+        const response = await axios.delete(
+          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+          { headers: getHeaders() },
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(
+          error,
+          `deleting job posting subscription '${subscriptionId}'`,
         );
       }
     },

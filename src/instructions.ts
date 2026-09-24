@@ -25,7 +25,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   3. **Also ask if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
-- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`, **ALWAYS call \`precept_check_credits\` first**.
+- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`, or \`precept_create_job_posting_subscription\`, **ALWAYS call \`precept_check_credits\` first**.
 - **Credit Volume Verification**: Before searching for *any* number of items — including the default first attempt of 30 items or any user-requested volume — the AI assistant **MUST verify that the user has enough credits to return that volume**.
 - Compare the user's available credits against the estimated cost of the requested operation.
 
@@ -171,6 +171,26 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   \`\`\`
   Total Estimated Credits = (1.0 base + queryCost + enrichmentCost) * companiesCount
   \`\`\`
+
+### 6. Job Posting Subscriptions (\`precept_create_job_posting_subscription\`)
+- Automatically monitors up to 100 companies on a recurring cadence (7 to 30 days) for active job postings and discovers matching decision makers.
+- **Credit Billing per Run**:
+  - **Job Posting Search**: \`5.0 credits / role / company\` (\`roles = departments.length + jobTitles.length\`).
+  - **Decision Makers**: \`0.5 credits / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
+  - **Zero Wasted Credits (Deduplication)**: Previously returned decision makers are filtered out before profile retrieval and are NEVER re-fetched or charged on recurring runs.
+- **Formula**:
+  \`\`\`
+  Job Search Cost = (departments.length + jobTitles.length) * 5.0 * companiesCount
+  Decision Maker Cost = newDecisionMakersCount * 0.5
+  Estimated Run Credits = Job Search Cost + (estimated 2-5 decision makers per hiring company * 0.5)
+  \`\`\`
+- **Key Rules**:
+  - Max 100 companies per subscription.
+  - Combined departments + jobTitles must not exceed 40.
+  - Decision makers: Automatically aims for up to 10 per job found (we do not ask the user for a limit).
+  - Frequency: 7 to 30 days (default: 7).
+  - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.
+  - Always verify the user has enough credits with \`precept_check_credits\` before creating a subscription.
 
 ---
 
