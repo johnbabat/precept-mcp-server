@@ -553,7 +553,7 @@ export function registerAllTools(
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
         "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
         "CRITICAL TIMEFRAME RULE: Do NOT silently default to 'month'. When a user asks to search posts without specifying a timeframe, the ONLY question you may ask the user upfront is their preferred timeframe: past 24 hours ('24h'), past week ('week'), or past month ('month'). DO NOT mention that you are searching for 30 leads or ask about volume upfront, and DO NOT ask if they want contact details (emails/phones) upfront. Silently default to 30 leads and without contact details. All other questions must come AFTER the first result is returned. " +
-        "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase, e.g. ['SEO problem', 'struggling with SEO'] or ['hiring React']). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'my team is hiring our first marketing hire snack brand') as long phrases drastically lower search engine recall. " +
+        "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase, e.g. ['SEO problem', 'struggling with SEO'] or ['AI workflow', 'marketing automation']). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'looking for a new senior product designer for our fintech startup') as long phrases drastically lower search engine recall. " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Silently default to 30 on the first attempt without asking about count. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress. " +
         "Upon completion, always try to give users the lead results in a sheet doc. " +
@@ -564,15 +564,15 @@ export function registerAllTools(
           .min(1)
           .max(5)
           .describe(
-            "1 to 5 concise keywords or phrases to search LinkedIn posts for (e.g. ['SEO problem', 'struggling with SEO'] or ['hiring React']). " +
+            "1 to 5 concise keywords or phrases to search LinkedIn posts for (e.g. ['SEO problem', 'struggling with SEO'] or ['AI workflow', 'marketing automation']). " +
               "Keep phrases short (1-3 words) to maximize search recall. Avoid full sentences or conversational filler.",
           ),
         description: z
           .string()
           .optional()
           .describe(
-            "A clear, detailed description of what the user is searching for (e.g. 'Hiring marketing, sales, or product leaders at supplement brands'). " +
-              "This is analyzed by AI to filter candidate posts for authentic hiring intent and role relevance.",
+            "A clear, detailed description of what the user is searching for (e.g. 'Founders discussing AI workflow automation or marketing challenges'). " +
+              "This provides context for relevance evaluation.",
           ),
         timeframe: z
           .enum(["24h", "day", "week", "month", "year"])
@@ -866,7 +866,7 @@ export function registerAllTools(
     {
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
-        "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies hiring in Berlin'. " +
+        "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies in Berlin'. " +
         "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
         "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
         "Upon completion, always try to give users the company results in a sheet doc.",

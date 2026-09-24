@@ -110,10 +110,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - **DO NOT silently default to \`month\`**.
   - If the user did not specify a timeframe in their prompt, **ALWAYS ask the user** whether they want to search posts from within the past 24 hours (\`24h\`), past week (\`week\`), or past month (\`month\`) before calling the tool.
 - **Keyword Generation Guidelines**:
-  - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\`).
-  - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'my team is hiring our first marketing hire snack brand'\`) as long phrases drastically lower search engine recall.
+  - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\` or \`['AI workflow', 'marketing automation']\`).
+  - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'looking for a new senior product designer for our fintech startup'\`) as long phrases drastically lower search engine recall.
 - **Search Description Guideline**:
-  - Always provide a clear, comprehensive \`description\` parameter explaining what the user is searching for (e.g. "Hiring marketing, sales, or product leaders in DTC supplement brands"). This is analyzed by AI to filter candidate posts for authentic hiring intent and role relevance.
+  - Always provide a clear, comprehensive \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
 - **Post Search Activity Signal**: \`+5.0 credits / lead\`
