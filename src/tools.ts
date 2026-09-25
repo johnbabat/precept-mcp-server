@@ -514,12 +514,19 @@ const subscriptionOutputSchema = z
   .object({
     success: z.boolean().optional(),
     message: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    name: z.string().optional(),
+    status: z.string().optional(),
+    companiesCount: z.number().optional(),
+    frequencyDays: z.number().optional(),
+    nextRunAt: z.number().optional(),
+    droppedCompanies: z.array(z.any()).optional(),
     subscription: z.any().optional(),
     latestResult: z.any().optional(),
     count: z.number().optional(),
   })
   .passthrough()
-  .describe("Subscription details and latest findings");
+  .describe("Subscription details and confirmation");
 
 const subscriptionListOutputSchema = z
   .object({
@@ -1528,7 +1535,26 @@ export function registerAllTools(
           args,
           { headers: getHeaders() },
         );
-        return formatResponse(response.data);
+        const data = response.data;
+        const sub = data?.subscription || {};
+        const formatted = {
+          success: data?.success ?? true,
+          message: data?.message ?? "Subscription created successfully.",
+          subscriptionId: sub.id,
+          name: sub.name,
+          status: sub.status,
+          companiesCount:
+            sub.companiesCount ??
+            (Array.isArray(sub.companies)
+              ? sub.companies.length
+              : args.companies?.length),
+          frequencyDays: sub.frequencyDays,
+          nextRunAt: sub.nextRunAt,
+          ...(data?.droppedCompanies?.length
+            ? { droppedCompanies: data.droppedCompanies }
+            : {}),
+        };
+        return formatResponse(formatted);
       } catch (error) {
         return formatError(error, "creating job posting subscription");
       }
@@ -1560,7 +1586,16 @@ export function registerAllTools(
           `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
           { headers: getHeaders() },
         );
-        return formatResponse(response.data);
+        const data = response.data;
+        if (data?.subscription) {
+          const { seenLeadIds, ...rest } = data.subscription;
+          data.subscription = {
+            ...rest,
+            seenLeadsCount:
+              data.subscription.seenLeadsCount ?? (seenLeadIds?.length || 0),
+          };
+        }
+        return formatResponse(data);
       } catch (error) {
         return formatError(
           error,
@@ -1642,7 +1677,24 @@ export function registerAllTools(
           updateFields,
           { headers: getHeaders() },
         );
-        return formatResponse(response.data);
+        const data = response.data;
+        const sub = data?.subscription || {};
+        const formatted = {
+          success: data?.success ?? true,
+          message: data?.message ?? "Subscription updated successfully.",
+          subscriptionId: sub.id || subscriptionId,
+          name: sub.name,
+          status: sub.status,
+          companiesCount:
+            sub.companiesCount ??
+            (Array.isArray(sub.companies) ? sub.companies.length : undefined),
+          frequencyDays: sub.frequencyDays,
+          nextRunAt: sub.nextRunAt,
+          ...(data?.droppedCompanies?.length
+            ? { droppedCompanies: data.droppedCompanies }
+            : {}),
+        };
+        return formatResponse(formatted);
       } catch (error) {
         return formatError(
           error,
@@ -1670,7 +1722,29 @@ export function registerAllTools(
           `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
           { headers: getHeaders() },
         );
-        return formatResponse(response.data);
+        const rawSubs = response.data?.subscriptions || [];
+        const subscriptions = rawSubs.map((sub: any) => {
+          const { seenLeadIds, ...rest } = sub;
+          return {
+            id: rest.id,
+            name: rest.name,
+            status: rest.status,
+            companiesCount:
+              rest.companiesCount ??
+              (Array.isArray(rest.companies) ? rest.companies.length : 0),
+            departments: rest.departments,
+            jobTitles: rest.jobTitles,
+            frequencyDays: rest.frequencyDays,
+            nextRunAt: rest.nextRunAt,
+            lastRunAt: rest.lastRunAt,
+            createdAt: rest.createdAt,
+            updatedAt: rest.updatedAt,
+          };
+        });
+        return formatResponse({
+          subscriptions,
+          count: subscriptions.length,
+        });
       } catch (error) {
         return formatError(error, "listing job posting subscriptions");
       }
