@@ -236,14 +236,13 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 ### 6. Job Posting Subscriptions (\`precept_create_job_posting_subscription\`)
 - Automatically monitors up to 100 companies on a recurring cadence (7 to 30 days) for active job postings and discovers matching decision makers.
 - **Credit Billing per Run**:
-  - **Job Posting Search**: \`5.0 credits / role / company\` (\`roles = departments.length + jobTitles.length\`).
+  - **Job Posting Search**: \`0 credits\` (free / included in subscriptions; Precept monitors your companies without charging search credits).
   - **Decision Makers**: \`0.5 credits / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
   - **Zero Wasted Credits (Deduplication)**: Previously returned decision makers are filtered out before profile retrieval and are NEVER re-fetched or charged on recurring runs.
 - **Formula**:
   \`\`\`
-  Job Search Cost = (departments.length + jobTitles.length) * 5.0 * companiesCount
   Decision Maker Cost = newDecisionMakersCount * 0.5
-  Estimated Run Credits = Job Search Cost + (estimated 2-5 decision makers per hiring company * 0.5)
+  Estimated Run Credits = (estimated 2-5 decision makers per hiring company * 0.5)
   \`\`\`
 - **Key Rules**:
   - Max 100 companies per subscription.
