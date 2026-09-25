@@ -81,9 +81,70 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 - Immediately notify the user:
   > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
 
-### 9. Role Limit (Maximum 40 Combined Departments and Job Titles)
-- When specifying \`departments\` and/or \`jobTitles\` for \`precept_get_company_insights\`, the total combined sum must never exceed 40 (\`departments.length + jobTitles.length <= 40\`).
-- If more than 40 roles are requested, narrow them down to the top 40 most relevant roles to avoid a 400 Bad Request error from the API.
+### 9. Departments, Role Limits & Conceptual Mapping
+- **Fixed List of 40 Canonical Departments**:
+  Precept has a fixed dictionary of 40 canonical departments with automatic synonym expansion (e.g. \`Design\` automatically expands to \`Designer\`, \`Creative\`, \`Graphic\`, \`UX\`, \`UI\`, \`Visual\`, etc.):
+  1. \`Underwriting\`
+  2. \`Pricing\`
+  3. \`Claims\`
+  4. \`Actuary\`
+  5. \`Logistics\`
+  6. \`Risk & Compliance\`
+  7. \`Sustainability\`
+  8. \`Health & Safety\`
+  9. \`Governance & Quality\`
+  10. \`Procurement & Sourcing\`
+  11. \`Finance & Accounting\`
+  12. \`Founder\`
+  13. \`Information Technology\`
+  14. \`Security\`
+  15. \`Innovation\`
+  16. \`Data & Analytics\`
+  17. \`Quality Control & Assurance\`
+  18. \`C-Suite\`
+  19. \`Sales\`
+  20. \`CEO\`
+  21. \`CFO\`
+  22. \`COO\`
+  23. \`Company-Secretary\`
+  24. \`Corporate Secretary\`
+  25. \`Administrative\`
+  26. \`Human Resources\`
+  27. \`Legal\`
+  28. \`Engineering and Technical\`
+  29. \`Customer Service\`
+  30. \`Product\`
+  31. \`Project Management\`
+  32. \`Marketing\`
+  33. \`Design\`
+  34. \`Operations\`
+  35. \`Research\`
+  36. \`Trades\`
+  37. \`Consulting\`
+  38. \`Medical\`
+  39. \`Real Estate\`
+  40. \`Education\`
+
+- **Intelligent Conceptual Mapping**:
+  When a user asks for broad business functions, commercial terms, or conceptual domains not directly in the list, **you must map them to the most closely related canonical department(s)**:
+  - **Commercial / GTM / Go-to-market**: Map to \`["Sales", "Marketing"]\`
+  - **Revenue / Business Development**: Map to \`["Sales", "Finance & Accounting"]\`
+  - **Engineering / Tech / Software / Developers**: Map to \`["Engineering and Technical", "Information Technology"]\`
+  - **AI / ML / Data Science**: Map to \`["Data & Analytics", "Engineering and Technical"]\`
+  - **People / Talent / Recruiting**: Map to \`["Human Resources"]\`
+  - **Executive / Leadership / Management**: Map to \`["C-Suite", "CEO", "COO"]\`
+  - **Cybersecurity / InfoSec**: Map to \`["Security", "Information Technology"]\`
+  - **Supply Chain**: Map to \`["Operations", "Logistics"]\`
+  - **Finance / Accounting**: Map to \`["Finance & Accounting"]\`
+  - **Compliance / Regulatory**: Map to \`["Risk & Compliance"]\`
+
+- **Departments vs Job Titles**:
+  - Use \`departments\` when targeting general functional areas from the 40 canonical departments.
+  - If the user asks for a specific, niche, or bespoke title (e.g. \`"RevOps"\`, \`"Growth Hacker"\`, \`"Solutions Architect"\`, \`"Underwriting Manager"\`, \`"Full Stack Engineer"\`), pass those strings in \`jobTitles\`.
+- **Role Limits** (differ by tool type):
+  - **Company Enrichments** (\`precept_get_company_insights\`, \`precept_search_companies\`): Combined \`departments + jobTitles\` must not exceed **40**.
+  - **Subscriptions** (\`precept_create_job_posting_subscription\`, \`precept_update_job_posting_subscription\`): Max **5 departments** and max **10 job titles** per subscription.
+  - If more roles are requested than the limit allows, narrow them down to the most relevant to avoid a 400 Bad Request error from the API.
 
 ---
 
@@ -186,7 +247,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   \`\`\`
 - **Key Rules**:
   - Max 100 companies per subscription.
-  - Combined departments + jobTitles must not exceed 40.
+  - Max 5 departments and max 10 job titles per subscription (stricter than enrichment limits).
   - Decision makers: Automatically aims for up to 10 per job found (we do not ask the user for a limit).
   - Frequency: 7 to 30 days (default: 7).
   - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.

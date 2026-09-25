@@ -85,6 +85,65 @@ export function checkServerVersion(currentVersion: string = SERVER_VERSION) {
   };
 }
 
+export const CANONICAL_DEPARTMENTS = [
+  "Underwriting",
+  "Pricing",
+  "Claims",
+  "Actuary",
+  "Logistics",
+  "Risk & Compliance",
+  "Sustainability",
+  "Health & Safety",
+  "Governance & Quality",
+  "Procurement & Sourcing",
+  "Finance & Accounting",
+  "Founder",
+  "Information Technology",
+  "Security",
+  "Innovation",
+  "Data & Analytics",
+  "Quality Control & Assurance",
+  "C-Suite",
+  "Sales",
+  "CEO",
+  "CFO",
+  "COO",
+  "Company-Secretary",
+  "Corporate Secretary",
+  "Administrative",
+  "Human Resources",
+  "Legal",
+  "Engineering and Technical",
+  "Customer Service",
+  "Product",
+  "Project Management",
+  "Marketing",
+  "Design",
+  "Operations",
+  "Research",
+  "Trades",
+  "Consulting",
+  "Medical",
+  "Real Estate",
+  "Education",
+] as const;
+
+export const departmentEnum = z.enum(CANONICAL_DEPARTMENTS);
+
+export const DEPARTMENTS_DESCRIPTION =
+  "Canonical department names to find employees or insights for. Must be chosen from the enum values. " +
+  "CONCEPTUAL MAPPING: Map broad business functions to the closest canonical enum options: " +
+  "- 'Commercial', 'GTM', 'Go-to-market' -> ['Sales', 'Marketing']; " +
+  "- 'Revenue', 'BizDev' -> ['Sales', 'Finance & Accounting']; " +
+  "- 'Tech', 'Software', 'Developers' -> ['Engineering and Technical', 'Information Technology']; " +
+  "- 'AI', 'ML', 'Data Science' -> ['Data & Analytics', 'Engineering and Technical']; " +
+  "- 'People', 'Talent', 'Recruiting' -> ['Human Resources']; " +
+  "- 'Leadership', 'Management' -> ['C-Suite', 'CEO', 'COO']; " +
+  "- 'Cybersecurity', 'InfoSec' -> ['Security', 'Information Technology']; " +
+  "- 'Supply Chain' -> ['Operations', 'Logistics']. " +
+  "For bespoke or custom role titles (e.g. 'RevOps', 'DevRel', 'Full Stack Engineer'), use jobTitles instead. " +
+  "SUBSCRIPTION LIMITS: Max 5 departments and max 10 job titles per subscription.";
+
 // Shared Zod schema for enrichments object (used in company insights and company search)
 const enrichmentsSchema = z
   .object({
@@ -108,14 +167,10 @@ const enrichmentsSchema = z
           "Lead-level: 'decision_makers' (finds key people by seniority), 'all_employees' (entire directory).",
       ),
     departments: z
-      .array(z.string())
+      .array(departmentEnum)
       .max(40)
       .optional()
-      .describe(
-        "Department names to find employees or insights for (case-insensitive). " +
-          "Valid values include: 'C-Suite', 'Engineering and Technical', 'Sales', 'Marketing', 'Product', 'Human Resources', 'Finance & Accounting', 'Operations', 'Design', 'Data & Analytics', 'Legal', 'Customer Service', 'Information Technology', 'Research', 'Consulting', 'Founder', and more. " +
-          "NOTE: The combined sum of departments and jobTitles must not exceed 40.",
-      ),
+      .describe(DEPARTMENTS_DESCRIPTION),
     jobTitles: z
       .array(z.string())
       .max(40)
@@ -1412,7 +1467,7 @@ export function registerAllTools(
         "Guarantees automatic lead deduplication: previously returned decision makers are never re-fetched or charged on recurring runs. " +
         "Supports 'runImmediately: true' (default: true) to start the first search run right away. " +
         "Results can be fetched via 'precept_get_job_posting_subscription' or delivered automatically to an optional 'webhookUrl'. " +
-        "You can monitor up to 100 companies per subscription. Total combined departments and jobTitles must not exceed 40.",
+        "You can monitor up to 100 companies per subscription. Max 5 departments and 10 job titles per subscription.",
       inputSchema: z.object({
         name: z
           .string()
@@ -1428,18 +1483,16 @@ export function registerAllTools(
             "Array of up to 100 companies to monitor. Each company must include 'companyName' and at least 'companyWebsite' or 'companyLinkedin'.",
           ),
         departments: z
-          .array(z.string())
-          .max(40)
+          .array(departmentEnum)
+          .max(5)
           .optional()
-          .describe(
-            "Departments to monitor for active job openings (e.g. ['Underwriting', 'Claims', 'Sales', 'Engineering']).",
-          ),
+          .describe(DEPARTMENTS_DESCRIPTION),
         jobTitles: z
           .array(z.string())
-          .max(40)
+          .max(10)
           .optional()
           .describe(
-            "Specific job titles to monitor (e.g. ['Underwriting Lead', 'VP Sales']).",
+            "Specific job titles to monitor (max 10, e.g. ['Underwriting Lead', 'VP Sales']).",
           ),
         frequencyDays: z
           .number()
@@ -1550,15 +1603,15 @@ export function registerAllTools(
             "List of company website domains to remove from the monitored list.",
           ),
         departments: z
-          .array(z.string())
-          .max(40)
+          .array(departmentEnum)
+          .max(5)
           .optional()
-          .describe("Updated list of departments to monitor."),
+          .describe(DEPARTMENTS_DESCRIPTION),
         jobTitles: z
           .array(z.string())
-          .max(40)
+          .max(10)
           .optional()
-          .describe("Updated list of job titles to monitor."),
+          .describe("Updated list of job titles to monitor (max 10)."),
         frequencyDays: z
           .number()
           .min(7)
