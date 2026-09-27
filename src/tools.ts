@@ -1565,18 +1565,9 @@ export function registerAllTools(
         const formatted = {
           success: data?.success ?? true,
           message: data?.message ?? "Subscription created successfully.",
-          subscriptionId: sub.id,
-          type: sub.type,
-          name: sub.name,
-          status: sub.status,
-          limit: sub.limit,
-          companiesCount:
-            sub.companiesCount ??
-            (Array.isArray(sub.companies)
-              ? sub.companies.length
-              : args.companies?.length),
-          frequencyDays: sub.frequencyDays,
-          nextRunAt: sub.nextRunAt,
+          subscriptionId: data?.subscriptionId || sub.id,
+          status: data?.status || sub.status,
+          nextRunAt: data?.nextRunAt || sub.nextRunAt,
           ...(data?.droppedCompanies?.length
             ? { droppedCompanies: data.droppedCompanies }
             : {}),
@@ -1723,19 +1714,9 @@ export function registerAllTools(
         const formatted = {
           success: data?.success ?? true,
           message: data?.message ?? "Subscription updated successfully.",
-          subscriptionId: sub.id || subscriptionId,
-          type: sub.type,
-          name: sub.name,
-          status: sub.status,
-          limit: sub.limit,
-          companiesCount:
-            sub.companiesCount ??
-            (Array.isArray(sub.companies) ? sub.companies.length : undefined),
-          frequencyDays: sub.frequencyDays,
-          nextRunAt: sub.nextRunAt,
-          ...(data?.droppedCompanies?.length
-            ? { droppedCompanies: data.droppedCompanies }
-            : {}),
+          subscriptionId: data?.subscriptionId || sub.id || subscriptionId,
+          status: data?.status || sub.status,
+          nextRunAt: data?.nextRunAt || sub.nextRunAt,
         };
         return formatResponse(formatted);
       } catch (error) {
