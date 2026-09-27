@@ -515,6 +515,7 @@ const subscriptionOutputSchema = z
     success: z.boolean().optional(),
     message: z.string().optional(),
     subscriptionId: z.string().optional(),
+    type: z.enum(["company_list", "job_search"]).optional(),
     name: z.string().optional(),
     status: z.string().optional(),
     companiesCount: z.number().optional(),
@@ -1469,25 +1470,33 @@ export function registerAllTools(
     "precept_create_job_posting_subscription",
     {
       description:
-        "Create an automated recurring subscription to monitor target companies for active job postings and discover matching decision makers for those roles. " +
-        "Precept checks for open positions in the specified departments or job titles on your chosen cadence (every 7 to 30 days, default 7). When open positions are found, it discovers up to 10 key decision makers for those exact roles. " +
+        "Create an automated recurring subscription to monitor for active job postings and discover matching decision makers. " +
+        "Supports two modes: " +
+        "1. Query-driven mode: specify 'query' (a natural language search query string describing target jobs, industries, employee sizes, and locations; e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). Filters and queries are generated automatically using AI. In this mode, 'companies' and 'departments' cannot be passed. " +
+        "2. Company-driven mode: specify 'companies' (up to 100) and 'departments' (up to 5) or 'jobTitles' (up to 10) to monitor specific target companies. " +
+        "Cadence can be set via 'frequencyDays' (7 to 30, default 7). When open positions are found, key decision makers are identified. " +
         "Guarantees automatic lead deduplication: previously returned decision makers are never re-fetched or charged on recurring runs. " +
         "Supports 'runImmediately: true' (default: true) to start the first search run right away. " +
-        "Results can be fetched via 'precept_get_job_posting_subscription' or delivered automatically to an optional 'webhookUrl'. " +
-        "You can monitor up to 100 companies per subscription. Max 5 departments and 10 job titles per subscription.",
+        "Results can be fetched via 'precept_get_job_posting_subscription' or delivered automatically to an optional 'webhookUrl'.",
       inputSchema: z.object({
         name: z
           .string()
           .optional()
           .describe(
-            "A readable name for this subscription (e.g. 'Fintech Underwriting Hiring').",
+            "A readable name for this subscription (e.g. 'Fintech Underwriting Hiring' or 'FMCG Sales Query').",
+          ),
+        query: z
+          .string()
+          .optional()
+          .describe(
+            "Natural language search query string for query-driven mode (e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). AI automatically analyzes and generates the search filters. Mutually exclusive with 'companies' and 'departments'.",
           ),
         companies: z
           .array(subscriptionCompanySchema)
-          .min(1)
           .max(100)
+          .optional()
           .describe(
-            "Array of up to 100 companies to monitor. Each company must include 'companyName' and at least 'companyWebsite' or 'companyLinkedin'.",
+            "Array of up to 100 companies to monitor (for company-driven mode). Each company must include 'companyName' and at least 'companyWebsite' or 'companyLinkedin'.",
           ),
         departments: z
           .array(departmentEnum)
@@ -1541,6 +1550,7 @@ export function registerAllTools(
           success: data?.success ?? true,
           message: data?.message ?? "Subscription created successfully.",
           subscriptionId: sub.id,
+          type: sub.type,
           name: sub.name,
           status: sub.status,
           companiesCount:
@@ -1612,12 +1622,18 @@ export function registerAllTools(
     "precept_update_job_posting_subscription",
     {
       description:
-        "Update an existing job posting subscription. Allows adding or removing companies, changing target departments or job titles, updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
+        "Update an existing job posting subscription. Allows updating the search query (for query-driven subscriptions), adding or removing companies, changing target departments or job titles (for company-driven subscriptions), updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
       inputSchema: z.object({
         subscriptionId: z
           .string()
           .describe("The unique ID of the subscription to update."),
         name: z.string().optional().describe("Updated name for the subscription."),
+        query: z
+          .string()
+          .optional()
+          .describe(
+            "Updated natural language search query string (for query-driven subscriptions). AI re-analyzes and generates updated filters.",
+          ),
         companies: z
           .array(subscriptionCompanySchema)
           .max(100)

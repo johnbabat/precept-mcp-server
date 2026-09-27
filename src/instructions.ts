@@ -234,9 +234,11 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   \`\`\`
 
 ### 6. Job Posting Subscriptions (\`precept_create_job_posting_subscription\`)
-- Automatically monitors up to 100 companies on a recurring cadence (7 to 30 days) for active job postings and discovers matching decision makers.
+- Supports two subscription modes on a recurring cadence (7 to 30 days):
+  1. **Query-Driven Mode (\`query: string\`)**: Provide a natural language search query string describing target jobs, industries, employee size, and countries (e.g. *"active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US"*). Precept automatically analyzes the query using AI (GPT-5.5) and generates the search filters and Elasticsearch DSL query, same as company and lead search. In this mode, do NOT provide \`companies\`, \`departments\`, or \`jobTitles\`.
+  2. **Company List Mode (\`companies: array\`)**: Explicitly monitors up to 100 target companies and optional \`departments\` (max 5) or \`jobTitles\` (max 10).
 - **Credit Billing per Run**:
-  - **Job Posting Search**: \`0 credits\` (free / included in subscriptions; Precept monitors your companies without charging search credits).
+  - **Job Posting Search**: \`0 credits\` (free / included in subscriptions; Precept monitors your companies or market queries without charging search credits).
   - **Decision Makers**: \`0.5 credits / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
   - **Zero Wasted Credits (Deduplication)**: Previously returned decision makers are filtered out before profile retrieval and are NEVER re-fetched or charged on recurring runs.
 - **Formula**:
@@ -245,8 +247,9 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   Estimated Run Credits = (estimated 2-5 decision makers per hiring company * 0.5)
   \`\`\`
 - **Key Rules**:
-  - Max 100 companies per subscription.
-  - Max 5 departments and max 10 job titles per subscription (stricter than enrichment limits).
+  - \`query\` must be a natural language string (never an object or JSON AST).
+  - Max 100 companies per subscription (for company list mode).
+  - Max 5 departments and max 10 job titles per subscription (for company list mode).
   - Decision makers: Automatically aims for up to 10 per job found (we do not ask the user for a limit).
   - Frequency: 7 to 30 days (default: 7).
   - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.
