@@ -248,6 +248,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   \`\`\`
 - **Key Rules**:
   - \`query\` must be a natural language string (never an object or JSON AST).
+  - \`limit\` (Job Postings Scan Limit): When using \`query\`, you can configure how many active job postings to scan per run via \`limit\` (default is 30, min 1, max 100). Precept evaluates candidate jobs and extracts matching decision makers from up to this scan limit per run.
   - Max 100 companies per subscription (for company list mode).
   - Max 5 departments and max 10 job titles per subscription (for company list mode).
   - Decision makers: Automatically aims for up to 10 per job found (we do not ask the user for a limit).

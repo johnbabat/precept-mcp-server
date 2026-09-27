@@ -518,6 +518,7 @@ const subscriptionOutputSchema = z
     type: z.enum(["company_list", "job_search"]).optional(),
     name: z.string().optional(),
     status: z.string().optional(),
+    limit: z.number().optional(),
     companiesCount: z.number().optional(),
     frequencyDays: z.number().optional(),
     nextRunAt: z.number().optional(),
@@ -1491,6 +1492,14 @@ export function registerAllTools(
           .describe(
             "Natural language search query string for query-driven mode (e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). AI automatically analyzes and generates the search filters. Mutually exclusive with 'companies' and 'departments'.",
           ),
+        limit: z
+          .number()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(
+            "Maximum number of job postings to scan per run for query-driven mode (min 1, max 100, default 30). Only applicable when 'query' is used.",
+          ),
         companies: z
           .array(subscriptionCompanySchema)
           .max(100)
@@ -1536,11 +1545,18 @@ export function registerAllTools(
     },
     async (args) => {
       try {
+        const isSearch = Boolean(args.query);
+        const endpoint = isSearch
+          ? `${PRECEPT_API_URL}/v1/subscriptions/job-postings/search`
+          : `${PRECEPT_API_URL}/v1/subscriptions/job-postings/company-upload`;
+
         console.log(
-          `[Tool] precept_create_job_posting_subscription starting... companiesCount=${args.companies?.length}, name='${args.name || "unnamed"}'`,
+          `[Tool] precept_create_job_posting_subscription starting... mode=${
+            isSearch ? "search" : "company_upload"
+          }, name='${args.name || "unnamed"}'`,
         );
         const response = await axios.post(
-          `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
+          endpoint,
           args,
           { headers: getHeaders() },
         );
@@ -1553,6 +1569,7 @@ export function registerAllTools(
           type: sub.type,
           name: sub.name,
           status: sub.status,
+          limit: sub.limit,
           companiesCount:
             sub.companiesCount ??
             (Array.isArray(sub.companies)
@@ -1622,7 +1639,7 @@ export function registerAllTools(
     "precept_update_job_posting_subscription",
     {
       description:
-        "Update an existing job posting subscription. Allows updating the search query (for query-driven subscriptions), adding or removing companies, changing target departments or job titles (for company-driven subscriptions), updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
+        "Update an existing job posting subscription. Allows updating the search query (for query-driven subscriptions), scan limit (1-100), adding or removing companies, changing target departments or job titles (for company-driven subscriptions), updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
       inputSchema: z.object({
         subscriptionId: z
           .string()
@@ -1633,6 +1650,14 @@ export function registerAllTools(
           .optional()
           .describe(
             "Updated natural language search query string (for query-driven subscriptions). AI re-analyzes and generates updated filters.",
+          ),
+        limit: z
+          .number()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(
+            "Updated maximum number of job postings to scan per run for query-driven subscriptions (min 1, max 100).",
           ),
         companies: z
           .array(subscriptionCompanySchema)
@@ -1699,8 +1724,10 @@ export function registerAllTools(
           success: data?.success ?? true,
           message: data?.message ?? "Subscription updated successfully.",
           subscriptionId: sub.id || subscriptionId,
+          type: sub.type,
           name: sub.name,
           status: sub.status,
+          limit: sub.limit,
           companiesCount:
             sub.companiesCount ??
             (Array.isArray(sub.companies) ? sub.companies.length : undefined),
@@ -1743,8 +1770,12 @@ export function registerAllTools(
           const { seenLeadIds, ...rest } = sub;
           return {
             id: rest.id,
+            type: rest.type,
             name: rest.name,
             status: rest.status,
+            limit: rest.limit,
+            query: rest.query,
+            querySummary: rest.querySummary,
             companiesCount:
               rest.companiesCount ??
               (Array.isArray(rest.companies) ? rest.companies.length : 0),
