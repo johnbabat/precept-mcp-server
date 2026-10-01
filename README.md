@@ -13,15 +13,15 @@ Supports dual-transport bootstrapping:
 
 ## Tools
 
-| Tool                           | Description                                                                                                                                                                                          |
-| :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `precept_search_leads`         | Search for leads using natural language (e.g. _"Marketing heads at SaaS companies in California"_). Optionally enrich with verified emails, phone numbers, and AI insights. Returns a `jobId`.       |
-| `precept_enrich_leads`         | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Returns verified emails, phones, professional summary, top problems, and strategic initiatives. Returns a `jobId`. |
-| `precept_get_company_insights` | Retrieve structured insights for specific companies — decision makers, technology stack, revenue, funding, employee counts, department ratios, and custom queries. Returns a `jobId`.                |
-| `precept_search_companies`     | Discover companies using natural language queries and optionally enrich with insights. Returns a `jobId`.                                                                                            |
+| Tool                           | Description                                                                                                                                                                                                                |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `precept_search_leads`         | Search for leads using natural language (e.g. _"Marketing heads at SaaS companies in California"_). Optionally enrich with verified emails, phone numbers, and AI insights. Returns a `jobId`.                             |
+| `precept_enrich_leads`         | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Returns verified emails, phones, professional summary, top problems, and strategic initiatives. Returns a `jobId`.                       |
+| `precept_get_company_insights` | Retrieve structured insights for specific companies — decision makers, technology stack, revenue, funding, employee counts, department ratios, and custom queries. Returns a `jobId`.                                      |
+| `precept_search_companies`     | Discover companies using natural language queries and optionally enrich with insights. Returns a `jobId`.                                                                                                                  |
 | `precept_get_job_status`       | Poll the status and retrieve results of any job. Poll every 4s for up to 150 attempts (~10m) while in progress and update user every 15 polls (~1m). Returns `processing` (with progress) or `completed` (with full data). |
-| `precept_check_credits`       | Check the remaining credit balance for your Precept account and server version status.                                                                                |
-| `precept_check_version`       | Check the running server version against the latest published release to see if a connector update is available.                                                     |
+| `precept_check_credits`        | Check the remaining credit balance for your Precept account and server version status.                                                                                                                                     |
+| `precept_check_version`        | Check the running server version against the latest published release to see if a connector update is available.                                                                                                           |
 
 ### How It Works (Async Job Pattern)
 
@@ -45,12 +45,19 @@ If reaches 150 attempts (~10m) still in progress → LLM asks user to check back
 
 The Precept MCP server is designed to run directly inside your LLM client.
 
-### Prerequisites
+### Step 1: Sign Up & Get Your Precept API Key
 
-- **Node.js** v20+
-- **Precept API Key** — generate one from the [Precept Developer Dashboard](https://app.preceptai.co.uk/developer)
+1. **Sign Up**: Create an account or sign in at [app.preceptai.co.uk](https://app.preceptai.co.uk/auth).
+2. **Access Dashboard**: Navigate to the [Precept Developer Dashboard](https://app.preceptai.co.uk/developer).
+3. **Generate API Key**: Click **Generate New API Key** and copy your key (starts with `pt_` or `precept_sk_...`). Treat this key like a password.
 
-### 1. Claude Desktop
+---
+
+### Step 2: Configure Your Client
+
+- **Node.js**: v20+
+
+#### 1. Claude Desktop
 
 Add this config to your Claude Desktop configuration file (typically at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
 
@@ -70,7 +77,7 @@ Add this config to your Claude Desktop configuration file (typically at `~/Libra
 
 _(Make sure to completely restart/quit Claude Desktop after editing this file)._
 
-### 2. Cursor
+#### 2. Cursor
 
 Go to **Settings** → **Features** → **MCP**:
 
@@ -80,7 +87,7 @@ Go to **Settings** → **Features** → **MCP**:
 4. Click **Save**
 5. Ensure your terminal has the `PRECEPT_API_KEY` environment variable set, or add it to a local `.env` file where Cursor is opened.
 
-### 3. Codex
+#### 3. Codex
 
 Run the following CLI command:
 

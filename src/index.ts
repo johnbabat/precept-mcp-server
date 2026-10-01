@@ -398,7 +398,7 @@ const AUTHORIZE_HTML_TEMPLATE = `
       </form>
       
       <div class="footer-text">
-        Find your API key on the <a href="https://app.preceptai.co.uk/developer" target="_blank" rel="noopener noreferrer">Precept Developer Dashboard</a>.<br>
+        Need an API key? <a href="https://app.preceptai.co.uk/auth" target="_blank" rel="noopener noreferrer">Sign up for Precept</a> or find your key on the <a href="https://app.preceptai.co.uk/developer" target="_blank" rel="noopener noreferrer">Developer Dashboard</a>.<br>
         Your credentials are encrypted in-transit and stored securely.
       </div>
     </div>
