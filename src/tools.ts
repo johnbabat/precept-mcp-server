@@ -353,16 +353,17 @@ const extensionStatusOutputSchema = z
   .passthrough()
   .describe("Status of the user's Precept Chrome extension");
 
-const queueCampaignOutputSchema = z
+const campaignQueueOutputSchema = z
   .object({
-    success: z.boolean(),
+    success: z.boolean().optional(),
+    message: z.string().optional(),
     campaignId: z.string().optional(),
     name: z.string().optional(),
     status: z
       .string()
       .optional()
       .describe(
-        "'running' if it started immediately, 'queued' if placed behind an active campaign",
+        "'running' if started immediately, 'queued' if placed behind active campaign, 'paused', 'archived', etc.",
       ),
     queuePosition: z
       .number()
@@ -373,63 +374,6 @@ const queueCampaignOutputSchema = z
       .string()
       .optional()
       .describe("ID of the newly created lead list saved in Precept"),
-    message: z.string().optional(),
-  })
-  .passthrough()
-  .describe("Result of queuing the LinkedIn outreach campaign");
-
-const sendMessageOutputSchema = z
-  .object({
-    success: z.boolean(),
-    messageId: z.string().optional(),
-    recipient: z
-      .object({
-        name: z.string().optional(),
-        linkedinUrl: z.string().optional(),
-      })
-      .optional(),
-    status: z
-      .string()
-      .optional()
-      .describe("'pending' while awaiting extension check-in, or 'sent'"),
-    deliveryMethod: z.string().optional(),
-    message: z.string().optional(),
-    warning: z.string().optional(),
-  })
-  .passthrough()
-  .describe("Result of dispatching a LinkedIn message to a lead");
-
-const messageStatusOutputSchema = z
-  .object({
-    success: z.boolean(),
-    messageId: z.string(),
-    status: z
-      .string()
-      .describe("'pending', 'sent', 'already_pending', or 'failed'"),
-    deliveryMethod: z
-      .string()
-      .nullable()
-      .optional()
-      .describe(
-        "'direct_message' (1st-degree connection) or 'connection_note' (fallback note)",
-      ),
-    recipient: z
-      .object({
-        name: z.string().optional(),
-        linkedinUrl: z.string().optional(),
-        company: z.string().optional(),
-        title: z.string().optional(),
-      })
-      .optional(),
-    queuedAt: z.string().optional(),
-    processedAt: z.string().nullable().optional(),
-    error: z.string().nullable().optional(),
-  })
-  .passthrough()
-  .describe("Current delivery status of a direct LinkedIn message");
-
-const outreachQueueOutputSchema = z
-  .object({
     activeCampaign: z
       .object({
         id: z.string(),
@@ -456,17 +400,21 @@ const outreachQueueOutputSchema = z
         latestLog: z.string().optional(),
       })
       .nullable()
-      .optional(),
-    queue: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        queuePosition: z.number(),
-        totalLeads: z.number(),
-        status: z.string(),
-        createdAt: z.string().optional(),
-      }),
-    ),
+      .optional()
+      .describe("Actively running campaign progress and real-time statistics"),
+    queue: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          queuePosition: z.number(),
+          totalLeads: z.number(),
+          status: z.string(),
+          createdAt: z.string().optional(),
+        }),
+      )
+      .optional()
+      .describe("Upcoming queued campaigns"),
     queueCount: z.number().optional(),
     history: z.array(z.any()).optional(),
     extension: z
@@ -478,19 +426,39 @@ const outreachQueueOutputSchema = z
       .optional(),
   })
   .passthrough()
-  .describe("Current outreach queue, active campaign progress, and stats");
+  .describe("Result of campaign queue operations (queuing, status, or queue lifecycle management)");
 
-const manageQueueOutputSchema = z
+const linkedinMessagesOutputSchema = z
   .object({
-    success: z.boolean(),
-    action: z.string(),
-    campaignId: z.string().optional(),
-    name: z.string().optional(),
-    status: z.string().optional(),
-    message: z.string(),
+    success: z.boolean().optional(),
+    messageId: z.string().optional().describe("Unique message identifier"),
+    status: z
+      .string()
+      .optional()
+      .describe("'pending' while in queue, 'sent', 'already_pending', or 'failed'"),
+    deliveryMethod: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "'direct_message' (1st-degree connection) or 'connection_note' (fallback note)",
+      ),
+    recipient: z
+      .object({
+        name: z.string().optional(),
+        linkedinUrl: z.string().optional(),
+        company: z.string().optional(),
+        title: z.string().optional(),
+      })
+      .optional(),
+    message: z.string().optional(),
+    warning: z.string().optional(),
+    queuedAt: z.string().optional(),
+    processedAt: z.string().nullable().optional(),
+    error: z.string().nullable().optional(),
   })
   .passthrough()
-  .describe("Result of managing outreach campaign lifecycle");
+  .describe("Result of sending a LinkedIn message or checking delivery status");
 
 const subscriptionCompanySchema = z
   .object({
@@ -510,7 +478,7 @@ const subscriptionCompanySchema = z
   })
   .describe("Company to monitor for job postings.");
 
-const subscriptionOutputSchema = z
+const jobPostingSubscriptionsOutputSchema = z
   .object({
     success: z.boolean().optional(),
     message: z.string().optional(),
@@ -523,20 +491,48 @@ const subscriptionOutputSchema = z
     frequencyDays: z.number().optional(),
     nextRunAt: z.number().optional(),
     droppedCompanies: z.array(z.any()).optional(),
-    subscription: z.any().optional(),
-    latestResult: z.any().optional(),
-    count: z.number().optional(),
+    subscription: z.any().optional().describe("Detailed subscription configuration and latest run stats"),
+    subscriptions: z
+      .array(z.any())
+      .optional()
+      .describe("List of all job posting subscriptions (when action is 'list')"),
+    count: z.number().optional().describe("Count of subscriptions returned"),
+    latestResult: z.any().optional().describe("Most recently discovered job postings and decision makers"),
   })
   .passthrough()
-  .describe("Subscription details and confirmation");
+  .describe("Result of job posting subscription operations (create, get, update, list, delete)");
 
-const subscriptionListOutputSchema = z
+const leadSubscriptionsOutputSchema = z
   .object({
-    subscriptions: z.array(z.any()).optional(),
-    count: z.number().optional(),
+    success: z.boolean().optional(),
+    message: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    name: z.string().optional(),
+    status: z.string().optional(),
+    frequencyDays: z.number().optional(),
+    leadsCount: z.number().optional(),
+    totalOrgSubscribedLeads: z
+      .number()
+      .optional()
+      .describe("Total actively subscribed leads across all subscriptions for the organization (max 150)"),
+    maxOrgSubscribedLeads: z.number().optional(),
+    totalSubscribedLeads: z.number().optional(),
+    maxAllowedLeads: z.number().optional(),
+    nextRunAt: z.number().optional(),
+    droppedLeads: z.array(z.any()).optional(),
+    subscription: z.any().optional().describe("Detailed lead subscription configuration"),
+    subscriptions: z
+      .array(z.any())
+      .optional()
+      .describe("List of all lead signal subscriptions (when action is 'list')"),
+    count: z.number().optional().describe("Count of lead subscriptions returned"),
+    latestResult: z
+      .any()
+      .optional()
+      .describe("Latest detected signals including job/role changes and LinkedIn posts"),
   })
   .passthrough()
-  .describe("List of user's job posting subscriptions");
+  .describe("Result of lead signal subscription operations (create, get, update, list, delete)");
 
 export function registerAllTools(
   server: McpServer,
@@ -1153,180 +1149,130 @@ export function registerAllTools(
   );
 
   // ──────────────────────────────────────────
-  // 9. precept_queue_campaign
+  // 9. precept_campaign_queue
   // ──────────────────────────────────────────
   server.registerTool(
-    "precept_queue_campaign",
+    "precept_campaign_queue",
     {
       description:
-        "Queue an automated LinkedIn outreach campaign to connect with leads. " +
-        "Supports queuing ad-hoc leads directly from search results without needing a pre-saved list (with optional auto-saving to your Precept lead lists), or referencing an existing saved leadsListId. " +
-        "If an outreach campaign is already running or paused, this campaign will be placed safely into the queue in FIFO order.",
+        "Manage LinkedIn outreach campaigns and the outreach queue. " +
+        "Actions: " +
+        "- 'queue': Queue an outreach campaign with ad-hoc leads or a saved leadsListId (FIFO queue if another campaign is active). " +
+        "- 'get_queue': Inspect running campaign progress, rate limit cooldowns, queued campaigns, and extension liveness. " +
+        "- 'pause' / 'resume': Pause active outreach or resume a paused campaign. " +
+        "- 'archive' / 'cancel': Terminate outreach and move the campaign to History. " +
+        "- 'remove': Remove an upcoming campaign from the queue.",
       inputSchema: z.object({
+        action: z
+          .enum(["queue", "get_queue", "pause", "resume", "archive", "cancel", "remove"])
+          .describe("The campaign queue action to perform."),
         name: z
           .string()
-          .describe(
-            "Descriptive name for the campaign (e.g. 'Fintech Founders Outreach - London Q3').",
-          ),
+          .optional()
+          .describe("Descriptive name for the campaign (required when action is 'queue')."),
         leads: z
           .array(leadInputSchema)
           .optional()
-          .describe(
-            "Array of leads to reach out to. Must include at least 'name' and 'linkedinUrl'. Required if leadsListId is not provided.",
-          ),
+          .describe("Array of leads to reach out to (for action 'queue'). Required if leadsListId is not provided."),
         leadsListId: z
           .string()
           .optional()
-          .describe(
-            "ID of an existing Precept lead list to run outreach on. Required if leads is not provided.",
-          ),
+          .describe("ID of an existing Precept lead list to run outreach on (for action 'queue')."),
         includePersonalizedNote: z
           .boolean()
           .optional()
-          .describe(
-            "Whether to include a personalized message note with the connection request. Defaults to true if a note or noteTemplate is provided.",
-          ),
+          .describe("Whether to include a personalized message note with connection requests (for action 'queue')."),
         noteTemplate: z
           .string()
           .optional()
-          .describe(
-            "Template for personalized connection note. Supports template variables: {{firstName}}, {{company}}, {{title}}. Example: 'Hi {{firstName}}, noticed your work at {{company}} and would love to connect!'",
-          ),
+          .describe("Template for personalized connection note with variables {{firstName}}, {{company}}, {{title}} (for action 'queue')."),
         autoSaveLeadsList: z
           .boolean()
           .optional()
-          .describe(
-            "When providing ad-hoc leads directly from search results, automatically saves them as a new lead list in your Precept account for future reference. Defaults to true.",
-          ),
+          .describe("Automatically save ad-hoc leads as a new lead list in Precept (for action 'queue', default true)."),
+        campaignId: z
+          .string()
+          .optional()
+          .describe("Specific campaign ID to pause, resume, cancel/archive, or remove."),
       }),
-      outputSchema: queueCampaignOutputSchema,
+      outputSchema: campaignQueueOutputSchema,
     },
     async ({
+      action,
       name,
       leads,
       leadsListId,
       includePersonalizedNote,
       noteTemplate,
       autoSaveLeadsList,
+      campaignId,
     }) => {
       try {
-        console.log(
-          `[Tool] precept_queue_campaign starting... name=${name}, leadsCount=${leads?.length || 0}, leadsListId=${leadsListId}`,
-        );
-        const response = await axios.post(
-          `${PRECEPT_API_URL}/v1/campaigns/queue`,
-          {
-            name,
-            leads,
-            leadsListId,
-            includePersonalizedNote,
-            noteTemplate,
-            autoSaveLeadsList,
-          },
-          { headers: getHeaders() },
-        );
-        console.log(
-          `[Tool] precept_queue_campaign succeeded. campaignId=${response.data?.campaignId}, status=${response.data?.status}, queuePosition=${response.data?.queuePosition}`,
-        );
-        return formatResponse(response.data);
-      } catch (error) {
-        return formatError(error, `queuing campaign '${name}'`);
-      }
-    },
-  );
+        console.log(`[Tool] precept_campaign_queue starting... action=${action}`);
+        if (action === "get_queue") {
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/campaigns/queue`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
 
-  // ──────────────────────────────────────────
-  // 10. precept_get_outreach_queue
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_get_outreach_queue",
-    {
-      description:
-        "Get full visibility into the current LinkedIn outreach queue. " +
-        "Returns the actively running campaign (with live progress, rate-limit sleep countdowns, and accepted invite stats), upcoming queued campaigns with their queue positions, and extension liveness.",
-      inputSchema: z.object({}),
-      outputSchema: outreachQueueOutputSchema,
-    },
-    async () => {
-      try {
-        console.log("[Tool] precept_get_outreach_queue starting...");
-        const response = await axios.get(
-          `${PRECEPT_API_URL}/v1/campaigns/queue`,
-          { headers: getHeaders() },
-        );
-        const activeName = response.data?.activeCampaign?.name || "none";
-        const queueLen = response.data?.queue?.length || 0;
-        console.log(
-          `[Tool] precept_get_outreach_queue succeeded. active=${activeName}, queueLength=${queueLen}`,
-        );
-        return formatResponse(response.data);
-      } catch (error) {
-        return formatError(error, "fetching outreach queue");
-      }
-    },
-  );
+        if (action === "queue") {
+          if (!name) {
+            return formatResponse({
+              success: false,
+              message: "Missing required parameter 'name' for action 'queue'.",
+            });
+          }
+          const response = await axios.post(
+            `${PRECEPT_API_URL}/v1/campaigns/queue`,
+            {
+              name,
+              leads,
+              leadsListId,
+              includePersonalizedNote,
+              noteTemplate,
+              autoSaveLeadsList,
+            },
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
 
-  // ──────────────────────────────────────────
-  // 11. precept_manage_queue
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_manage_queue",
-    {
-      description:
-        "Manage the LinkedIn outreach queue. Pause active outreach, resume paused campaigns, archive an active campaign to History, or remove an upcoming campaign from the queue.",
-      inputSchema: z.object({
-        action: z
-          .enum(["pause", "resume", "archive", "cancel", "remove"])
-          .describe(
-            "The management action to perform: 'pause' to temporarily halt outreach, 'resume' to continue outreach, 'archive' (or 'cancel') to end outreach and move the campaign to History, or 'remove' to remove an upcoming campaign from the queue.",
-          ),
-        campaignId: z
-          .string()
-          .optional()
-          .describe(
-            "Specific campaign ID to pause, resume, or cancel. If omitted for pause or resume, targets the currently active campaign.",
-          ),
-      }),
-      outputSchema: manageQueueOutputSchema,
-    },
-    async ({ action, campaignId }) => {
-      try {
-        console.log(
-          `[Tool] precept_manage_queue starting... action=${action}, campaignId=${campaignId || "active"}`,
-        );
+        // Management actions: pause, resume, archive, cancel, remove
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/campaigns/action`,
           { action, campaignId },
           { headers: getHeaders() },
         );
-        console.log(
-          `[Tool] precept_manage_queue succeeded: ${response.data?.message}`,
-        );
         return formatResponse(response.data);
       } catch (error) {
-        return formatError(
-          error,
-          `performing action '${action}' on campaign ${campaignId || "active"}`,
-        );
+        return formatError(error, `campaign queue action '${action}'`);
       }
     },
   );
 
   // ──────────────────────────────────────────
-  // 12. precept_send_message
+  // 10. precept_linkedin_messages
   // ──────────────────────────────────────────
   server.registerTool(
-    "precept_send_message",
+    "precept_linkedin_messages",
     {
       description:
-        "Send a direct message or outreach note to an individual LinkedIn lead via the Precept Chrome extension. " +
-        "MANDATORY PRE-CHECK: Before calling this tool, you MUST first verify that the extension is active using `precept_get_extension_status`. " +
-        "MANDATORY POLLING RULE: Once dispatched, you MUST continuously poll `precept_get_message_status` up to 40 times (every 3 seconds) while status is 'pending'. " +
+        "Send direct LinkedIn messages and check delivery status via the Precept Chrome extension. " +
+        "Actions: " +
+        "- 'send': Send a direct message or outreach note to an individual lead via the Precept Chrome extension. " +
+        "  MANDATORY PRE-CHECK: Before calling 'send', verify that the extension is active using precept_get_extension_status. " +
+        "  If the lead is already a 1st-degree connection, it delivers as a direct message (DM). " +
+        "  If not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars). " +
+        "- 'get_status': Check the delivery status of a previously dispatched message. " +
+        "MANDATORY POLLING RULE: Once dispatched via 'send', you MUST continuously poll 'get_status' up to 40 times (every 3 seconds) while status is 'pending'. " +
         "If status becomes 'sent', 'already_pending', or 'failed', present the final outcome (including error details if failed). " +
-        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later. " +
-        "If the lead is already a 1st-degree connection, it delivers as a direct message (DM). " +
-        "If the lead is not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars).",
+        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later.",
       inputSchema: z.object({
+        action: z
+          .enum(["send", "get_status"])
+          .describe("The messaging action to perform: 'send' or 'get_status'."),
         recipient: z
           .object({
             name: z
@@ -1346,27 +1292,58 @@ export function registerAllTools(
               .optional()
               .describe("Job title of the lead (e.g. 'VP of Engineering')."),
           })
-          .describe("The lead to send the message to."),
+          .optional()
+          .describe("The lead to send the message to (required when action is 'send')."),
         message: z
           .string()
+          .optional()
           .describe(
-            "The message text to send. Keep it concise (ideally under 200 characters) so it can cleanly fit as a connection request note if the recipient is not yet connected.",
+            "The message text to send (required when action is 'send'). Keep concise (ideally under 200 chars) for connection note compatibility.",
           ),
         fallbackToConnectionNote: z
           .boolean()
           .optional()
           .default(true)
           .describe(
-            "Whether to automatically fall back to sending a connection request with this message as a note if the lead is not a 1st-degree connection. Defaults to true.",
+            "Whether to automatically fall back to sending a connection request with this message as a note if the lead is not a 1st-degree connection (for action 'send', default true).",
           ),
+        messageId: z
+          .string()
+          .optional()
+          .describe("The message ID returned by 'send' to check status for (required when action is 'get_status')."),
       }),
-      outputSchema: sendMessageOutputSchema,
+      outputSchema: linkedinMessagesOutputSchema,
     },
-    async ({ recipient, message, fallbackToConnectionNote }) => {
+    async ({
+      action,
+      recipient,
+      message,
+      fallbackToConnectionNote,
+      messageId,
+    }) => {
       try {
-        console.log(
-          `[Tool] precept_send_message starting... recipient=${recipient?.name} (${recipient?.linkedinUrl})`,
-        );
+        console.log(`[Tool] precept_linkedin_messages starting... action=${action}`);
+        if (action === "get_status") {
+          if (!messageId) {
+            return formatResponse({
+              success: false,
+              message: "Missing required parameter 'messageId' for action 'get_status'.",
+            });
+          }
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/messages/${messageId}`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        // action === "send"
+        if (!recipient || !message) {
+          return formatResponse({
+            success: false,
+            message: "Missing required parameters 'recipient' and 'message' for action 'send'.",
+          });
+        }
 
         // Extension liveness & version check
         try {
@@ -1397,7 +1374,7 @@ export function registerAllTools(
           }
         } catch (extErr) {
           console.warn(
-            "[Tool] precept_send_message extension check warning:",
+            "[Tool] precept_linkedin_messages extension check warning:",
             extErr,
           );
         }
@@ -1411,264 +1388,64 @@ export function registerAllTools(
           },
           { headers: getHeaders() },
         );
-
-        console.log(
-          `[Tool] precept_send_message succeeded. messageId=${response.data?.messageId}, status=${response.data?.status}`,
-        );
         return formatResponse(response.data);
       } catch (error) {
-        return formatError(
-          error,
-          `sending message to '${recipient?.name || "recipient"}'`,
-        );
+        return formatError(error, `executing LinkedIn messaging action '${action}'`);
       }
     },
   );
 
   // ──────────────────────────────────────────
-  // 13. precept_get_message_status
+  // 11. precept_job_posting_subscriptions
   // ──────────────────────────────────────────
   server.registerTool(
-    "precept_get_message_status",
+    "precept_job_posting_subscriptions",
     {
       description:
-        "Check the delivery status of a direct LinkedIn message previously dispatched via precept_send_message. " +
-        "MANDATORY POLLING RULE: Poll this tool up to 40 times (every 3 seconds) while status is 'pending'. " +
-        "If status becomes 'sent', 'already_pending', or 'failed', present the final outcome (including error details if failed). " +
-        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later.",
+        "Manage automated recurring job posting subscriptions to monitor target companies or natural language queries for active hiring signals and discover decision makers. " +
+        "Actions: " +
+        "- 'create': Create a subscription. Supports query-driven mode ('query', 'limit') or company-driven mode ('companies', 'departments', 'jobTitles'). Set cadence with 'frequencyDays' (7-30). " +
+        "- 'get': Retrieve a subscription by 'subscriptionId', including latest hiring findings and decision makers. " +
+        "- 'update': Update target companies, query, departments, cadence, webhookUrl, or status ('active'/'paused') by 'subscriptionId'. " +
+        "- 'list': List all job posting subscriptions. " +
+        "- 'delete': Cancel and permanently delete a subscription by 'subscriptionId'.",
       inputSchema: z.object({
-        messageId: z
+        action: z
+          .enum(["create", "get", "update", "list", "delete"])
+          .describe("The subscription action to perform."),
+        subscriptionId: z
           .string()
-          .describe(
-            "The message ID returned by precept_send_message (e.g. 'msg_1726237000000_abc').",
-          ),
-      }),
-      outputSchema: messageStatusOutputSchema,
-    },
-    async ({ messageId }) => {
-      try {
-        console.log(
-          `[Tool] precept_get_message_status starting... messageId=${messageId}`,
-        );
-        const response = await axios.get(
-          `${PRECEPT_API_URL}/v1/messages/${messageId}`,
-          { headers: getHeaders() },
-        );
-        return formatResponse(response.data);
-      } catch (error) {
-        return formatError(
-          error,
-          `checking delivery status for message '${messageId}'`,
-        );
-      }
-    },
-  );
-
-  // ──────────────────────────────────────────
-  // 14. precept_create_job_posting_subscription
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_create_job_posting_subscription",
-    {
-      description:
-        "Create an automated recurring subscription to monitor for active job postings and discover matching decision makers. " +
-        "Supports two modes: " +
-        "1. Query-driven mode: specify 'query' (a natural language search query string describing target jobs, industries, employee sizes, and locations; e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). Filters and queries are generated automatically using AI. In this mode, 'companies' and 'departments' cannot be passed. " +
-        "2. Company-driven mode: specify 'companies' (up to 100) and 'departments' (up to 5) or 'jobTitles' (up to 10) to monitor specific target companies. " +
-        "Cadence can be set via 'frequencyDays' (7 to 30, default 7). When open positions are found, key decision makers are identified. " +
-        "Guarantees automatic lead deduplication: previously returned decision makers are never re-fetched or charged on recurring runs. " +
-        "Supports 'runImmediately: true' (default: true) to start the first search run right away. " +
-        "Results can be fetched via 'precept_get_job_posting_subscription' or delivered automatically to an optional 'webhookUrl'.",
-      inputSchema: z.object({
+          .optional()
+          .describe("The unique subscription ID (required for 'get', 'update', 'delete')."),
         name: z
           .string()
           .optional()
-          .describe(
-            "A readable name for this subscription (e.g. 'Fintech Underwriting Hiring' or 'FMCG Sales Query').",
-          ),
+          .describe("A readable name for this subscription (for 'create' or 'update')."),
         query: z
           .string()
           .optional()
           .describe(
-            "Natural language search query string for query-driven mode (e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). AI automatically analyzes and generates the search filters. Mutually exclusive with 'companies' and 'departments'.",
+            "Natural language search query string for query-driven mode (e.g. 'active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US'). Mutually exclusive with 'companies'.",
           ),
         limit: z
           .number()
           .min(1)
           .max(100)
           .optional()
-          .describe(
-            "Maximum number of job postings to scan per run for query-driven mode (min 1, max 100, default 30). Only applicable when 'query' is used.",
-          ),
+          .describe("Maximum number of job postings to scan per run for query-driven mode (min 1, max 100, default 30)."),
         companies: z
           .array(subscriptionCompanySchema)
           .max(100)
           .optional()
-          .describe(
-            "Array of up to 100 companies to monitor (for company-driven mode). Each company must include 'companyName' and at least 'companyWebsite' or 'companyLinkedin'.",
-          ),
-        departments: z
-          .array(departmentEnum)
-          .max(5)
-          .optional()
-          .describe(DEPARTMENTS_DESCRIPTION),
-        jobTitles: z
-          .array(z.string())
-          .max(10)
-          .optional()
-          .describe(
-            "Specific job titles to monitor (max 10, e.g. ['Underwriting Lead', 'VP Sales']).",
-          ),
-        frequencyDays: z
-          .number()
-          .min(7)
-          .max(30)
-          .optional()
-          .describe(
-            "Cadence in days between automated checks. Minimum 7 days, maximum 30 days. Default: 7 (weekly).",
-          ),
-        runImmediately: z
-          .boolean()
-          .optional()
-          .describe(
-            "Whether to immediately start the first run upon creation (default: true).",
-          ),
-        webhookUrl: z
-          .string()
-          .url()
-          .optional()
-          .describe(
-            "Optional webhook URL where findings will be POSTed on each completed run.",
-          ),
-      }),
-      outputSchema: subscriptionOutputSchema,
-    },
-    async (args) => {
-      try {
-        const isSearch = Boolean(args.query);
-        const endpoint = isSearch
-          ? `${PRECEPT_API_URL}/v1/subscriptions/job-postings/search`
-          : `${PRECEPT_API_URL}/v1/subscriptions/job-postings/company-upload`;
-
-        console.log(
-          `[Tool] precept_create_job_posting_subscription starting... mode=${
-            isSearch ? "search" : "company_upload"
-          }, name='${args.name || "unnamed"}'`,
-        );
-        const response = await axios.post(
-          endpoint,
-          args,
-          { headers: getHeaders() },
-        );
-        const data = response.data;
-        const sub = data?.subscription || {};
-        const formatted = {
-          success: data?.success ?? true,
-          message: data?.message ?? "Subscription created successfully.",
-          subscriptionId: data?.subscriptionId || sub.id,
-          status: data?.status || sub.status,
-          nextRunAt: data?.nextRunAt || sub.nextRunAt,
-          ...(data?.droppedCompanies?.length
-            ? { droppedCompanies: data.droppedCompanies }
-            : {}),
-        };
-        return formatResponse(formatted);
-      } catch (error) {
-        return formatError(error, "creating job posting subscription");
-      }
-    },
-  );
-
-  // ──────────────────────────────────────────
-  // 15. precept_get_job_posting_subscription
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_get_job_posting_subscription",
-    {
-      description:
-        "Retrieve a job posting subscription by ID, including its configuration, active status, cadence, and latest findings (active job postings and discovered decision makers). " +
-        "Returns the most recent batch of results found for each monitored company.",
-      inputSchema: z.object({
-        subscriptionId: z
-          .string()
-          .describe("The unique ID of the subscription to retrieve."),
-      }),
-      outputSchema: subscriptionOutputSchema,
-    },
-    async ({ subscriptionId }) => {
-      try {
-        console.log(
-          `[Tool] precept_get_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
-        );
-        const response = await axios.get(
-          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
-          { headers: getHeaders() },
-        );
-        const data = response.data;
-        if (data?.subscription) {
-          const { seenLeadIds, ...rest } = data.subscription;
-          data.subscription = {
-            ...rest,
-            seenLeadsCount:
-              data.subscription.seenLeadsCount ?? (seenLeadIds?.length || 0),
-          };
-        }
-        return formatResponse(data);
-      } catch (error) {
-        return formatError(
-          error,
-          `fetching job posting subscription '${subscriptionId}'`,
-        );
-      }
-    },
-  );
-
-  // ──────────────────────────────────────────
-  // 16. precept_update_job_posting_subscription
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_update_job_posting_subscription",
-    {
-      description:
-        "Update an existing job posting subscription. Allows updating the search query (for query-driven subscriptions), scan limit (1-100), adding or removing companies, changing target departments or job titles (for company-driven subscriptions), updating cadence (7-30 days), setting/clearing webhookUrl, or pausing/resuming.",
-      inputSchema: z.object({
-        subscriptionId: z
-          .string()
-          .describe("The unique ID of the subscription to update."),
-        name: z.string().optional().describe("Updated name for the subscription."),
-        query: z
-          .string()
-          .optional()
-          .describe(
-            "Updated natural language search query string (for query-driven subscriptions). AI re-analyzes and generates updated filters.",
-          ),
-        limit: z
-          .number()
-          .min(1)
-          .max(100)
-          .optional()
-          .describe(
-            "Updated maximum number of job postings to scan per run for query-driven subscriptions (min 1, max 100).",
-          ),
-        companies: z
-          .array(subscriptionCompanySchema)
-          .max(100)
-          .optional()
-          .describe(
-            "Replace the full list of monitored companies with this array (max 100).",
-          ),
+          .describe("Array of up to 100 companies to monitor (for company-driven mode, or full replacement in 'update')."),
         addCompanies: z
           .array(subscriptionCompanySchema)
           .optional()
-          .describe(
-            "Append new companies to the existing monitored list (total cannot exceed 100).",
-          ),
+          .describe("Append new companies to the existing monitored list in 'update'."),
         removeCompanyWebsites: z
           .array(z.string())
           .optional()
-          .describe(
-            "List of company website domains to remove from the monitored list.",
-          ),
+          .describe("List of company website domains to remove in 'update'."),
         departments: z
           .array(departmentEnum)
           .max(5)
@@ -1678,137 +1455,361 @@ export function registerAllTools(
           .array(z.string())
           .max(10)
           .optional()
-          .describe("Updated list of job titles to monitor (max 10)."),
+          .describe("Specific job titles to monitor (max 10)."),
         frequencyDays: z
           .number()
           .min(7)
           .max(30)
           .optional()
-          .describe("Updated cadence in days (7 to 30)."),
+          .describe("Cadence in days between automated checks (7 to 30, default 7)."),
+        runImmediately: z
+          .boolean()
+          .optional()
+          .describe("Whether to immediately start the first run upon creation (default: true)."),
         webhookUrl: z
           .string()
           .url()
           .optional()
-          .describe(
-            "Updated webhook URL, or empty string to disable webhook delivery.",
-          ),
+          .describe("Optional webhook URL where findings will be POSTed on each completed run."),
         status: z
           .enum(["active", "paused"])
           .optional()
-          .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt."),
+          .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt (for 'update')."),
       }),
-      outputSchema: subscriptionOutputSchema,
+      outputSchema: jobPostingSubscriptionsOutputSchema,
     },
-    async ({ subscriptionId, ...updateFields }) => {
+    async ({
+      action,
+      subscriptionId,
+      name,
+      query,
+      limit,
+      companies,
+      addCompanies,
+      removeCompanyWebsites,
+      departments,
+      jobTitles,
+      frequencyDays,
+      runImmediately,
+      webhookUrl,
+      status,
+    }) => {
       try {
-        console.log(
-          `[Tool] precept_update_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
-        );
-        const response = await axios.patch(
-          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
-          updateFields,
-          { headers: getHeaders() },
-        );
-        const data = response.data;
-        const sub = data?.subscription || {};
-        const formatted = {
-          success: data?.success ?? true,
-          message: data?.message ?? "Subscription updated successfully.",
-          subscriptionId: data?.subscriptionId || sub.id || subscriptionId,
-          status: data?.status || sub.status,
-          nextRunAt: data?.nextRunAt || sub.nextRunAt,
-        };
-        return formatResponse(formatted);
-      } catch (error) {
-        return formatError(
-          error,
-          `updating job posting subscription '${subscriptionId}'`,
-        );
-      }
-    },
-  );
+        console.log(`[Tool] precept_job_posting_subscriptions starting... action=${action}`);
 
-  // ──────────────────────────────────────────
-  // 17. precept_list_job_posting_subscriptions
-  // ──────────────────────────────────────────
-  server.registerTool(
-    "precept_list_job_posting_subscriptions",
-    {
-      description:
-        "List all job posting subscriptions created for your account, showing monitored companies, status ('active', 'paused', 'insufficient_credits'), and run schedule.",
-      inputSchema: z.object({}),
-      outputSchema: subscriptionListOutputSchema,
-    },
-    async () => {
-      try {
-        console.log("[Tool] precept_list_job_posting_subscriptions starting...");
-        const response = await axios.get(
-          `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
-          { headers: getHeaders() },
-        );
-        const rawSubs = response.data?.subscriptions || [];
-        const subscriptions = rawSubs.map((sub: any) => {
-          const { seenLeadIds, ...rest } = sub;
-          return {
-            id: rest.id,
-            type: rest.type,
-            name: rest.name,
-            status: rest.status,
-            limit: rest.limit,
-            query: rest.query,
-            querySummary: rest.querySummary,
-            companiesCount:
-              rest.companiesCount ??
-              (Array.isArray(rest.companies) ? rest.companies.length : 0),
-            departments: rest.departments,
-            jobTitles: rest.jobTitles,
-            frequencyDays: rest.frequencyDays,
-            nextRunAt: rest.nextRunAt,
-            lastRunAt: rest.lastRunAt,
-            createdAt: rest.createdAt,
-            updatedAt: rest.updatedAt,
+        if (action === "list") {
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/subscriptions/job-postings`,
+            { headers: getHeaders() },
+          );
+          const rawSubs = response.data?.subscriptions || [];
+          const subscriptions = rawSubs.map((sub: any) => {
+            const { seenLeadIds, ...rest } = sub;
+            return {
+              id: rest.id,
+              type: rest.type,
+              name: rest.name,
+              status: rest.status,
+              limit: rest.limit,
+              query: rest.query,
+              querySummary: rest.querySummary,
+              companiesCount:
+                rest.companiesCount ??
+                (Array.isArray(rest.companies) ? rest.companies.length : 0),
+              departments: rest.departments,
+              jobTitles: rest.jobTitles,
+              frequencyDays: rest.frequencyDays,
+              nextRunAt: rest.nextRunAt,
+              lastRunAt: rest.lastRunAt,
+              createdAt: rest.createdAt,
+              updatedAt: rest.updatedAt,
+            };
+          });
+          return formatResponse({
+            subscriptions,
+            count: subscriptions.length,
+          });
+        }
+
+        if (action === "create") {
+          const isSearch = Boolean(query);
+          const endpoint = isSearch
+            ? `${PRECEPT_API_URL}/v1/subscriptions/job-postings/search`
+            : `${PRECEPT_API_URL}/v1/subscriptions/job-postings/company-upload`;
+
+          const payload: any = {
+            name,
+            frequencyDays,
+            runImmediately,
+            webhookUrl,
           };
-        });
-        return formatResponse({
-          subscriptions,
-          count: subscriptions.length,
-        });
+          if (isSearch) {
+            payload.query = query;
+            if (limit) payload.limit = limit;
+          } else {
+            payload.companies = companies;
+            payload.departments = departments;
+            payload.jobTitles = jobTitles;
+          }
+
+          const response = await axios.post(
+            endpoint,
+            payload,
+            { headers: getHeaders() },
+          );
+          const data = response.data;
+          const sub = data?.subscription || {};
+          return formatResponse({
+            success: data?.success ?? true,
+            message: data?.message ?? "Subscription created successfully.",
+            subscriptionId: data?.subscriptionId || sub.id,
+            status: data?.status || sub.status,
+            nextRunAt: data?.nextRunAt || sub.nextRunAt,
+            ...(data?.droppedCompanies?.length
+              ? { droppedCompanies: data.droppedCompanies }
+              : {}),
+          });
+        }
+
+        // 'get', 'update', 'delete' require subscriptionId
+        if (!subscriptionId) {
+          return formatResponse({
+            success: false,
+            message: `Missing required parameter 'subscriptionId' for action '${action}'.`,
+          });
+        }
+
+        if (action === "get") {
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+            { headers: getHeaders() },
+          );
+          const data = response.data;
+          if (data?.subscription) {
+            const { seenLeadIds, ...rest } = data.subscription;
+            data.subscription = {
+              ...rest,
+              seenLeadsCount:
+                data.subscription.seenLeadsCount ?? (seenLeadIds?.length || 0),
+            };
+          }
+          return formatResponse(data);
+        }
+
+        if (action === "update") {
+          const updateFields: any = {};
+          if (name !== undefined) updateFields.name = name;
+          if (query !== undefined) updateFields.query = query;
+          if (limit !== undefined) updateFields.limit = limit;
+          if (companies !== undefined) updateFields.companies = companies;
+          if (addCompanies !== undefined) updateFields.addCompanies = addCompanies;
+          if (removeCompanyWebsites !== undefined) updateFields.removeCompanyWebsites = removeCompanyWebsites;
+          if (departments !== undefined) updateFields.departments = departments;
+          if (jobTitles !== undefined) updateFields.jobTitles = jobTitles;
+          if (frequencyDays !== undefined) updateFields.frequencyDays = frequencyDays;
+          if (webhookUrl !== undefined) updateFields.webhookUrl = webhookUrl;
+          if (status !== undefined) updateFields.status = status;
+
+          const response = await axios.patch(
+            `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+            updateFields,
+            { headers: getHeaders() },
+          );
+          const data = response.data;
+          const sub = data?.subscription || {};
+          return formatResponse({
+            success: data?.success ?? true,
+            message: data?.message ?? "Subscription updated successfully.",
+            subscriptionId: data?.subscriptionId || sub.id || subscriptionId,
+            status: data?.status || sub.status,
+            nextRunAt: data?.nextRunAt || sub.nextRunAt,
+          });
+        }
+
+        if (action === "delete") {
+          const response = await axios.delete(
+            `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        return formatResponse({ success: false, message: `Unknown action: ${action}` });
       } catch (error) {
-        return formatError(error, "listing job posting subscriptions");
+        return formatError(error, `job posting subscription action '${action}'`);
       }
     },
   );
 
   // ──────────────────────────────────────────
-  // 18. precept_delete_job_posting_subscription
+  // 12. precept_lead_subscriptions
   // ──────────────────────────────────────────
   server.registerTool(
-    "precept_delete_job_posting_subscription",
+    "precept_lead_subscriptions",
     {
       description:
-        "Cancel and permanently delete an automated job posting subscription.",
+        "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, and new LinkedIn posts. " +
+        "Actions: " +
+        "- 'create': Subscribe to monitor leads (up to 150 total leads org quota) with a 7-30 day cadence. Baseline company/title is saved on initial run. " +
+        "- 'get': Retrieve subscription details and latest detected signals (job/title changes, LinkedIn post content). " +
+        "- 'update': Add/remove leads, modify cadence (7-30d), set/clear webhookUrl, or pause/resume. " +
+        "- 'list': List all lead subscriptions with lead counts, quota usage, and schedules. " +
+        "- 'delete': Cancel and permanently remove a lead subscription.",
       inputSchema: z.object({
+        action: z
+          .enum(["create", "get", "update", "list", "delete"])
+          .describe("The lead subscription action to perform."),
         subscriptionId: z
           .string()
-          .describe("The unique ID of the subscription to delete."),
+          .optional()
+          .describe("The unique lead subscription ID (required for 'get', 'update', 'delete')."),
+        name: z
+          .string()
+          .optional()
+          .describe("Descriptive name for this lead subscription (for 'create' or 'update')."),
+        leads: z
+          .array(
+            z.union([
+              z.string().describe("LinkedIn profile URL (e.g. 'https://www.linkedin.com/in/username')"),
+              z.object({
+                linkedinUrl: z.string().describe("LinkedIn profile URL"),
+                name: z.string().optional().describe("Lead's full name"),
+                customData: z.record(z.string()).optional().describe("Optional custom metadata"),
+              }),
+            ]),
+          )
+          .min(1)
+          .max(150)
+          .optional()
+          .describe("List of target leads using LinkedIn profile URLs (up to 150 total, for 'create')."),
+        frequencyDays: z
+          .number()
+          .min(7)
+          .max(30)
+          .optional()
+          .default(7)
+          .describe("Frequency cadence in days between checks (7 to 30, default 7)."),
+        runImmediately: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe("Whether to immediately trigger the first check upon creation (for 'create', default: true)."),
+        webhookUrl: z
+          .string()
+          .optional()
+          .describe("Optional webhook URL where signal findings will be POSTed on each completed run."),
+        addLeads: z
+          .array(
+            z.union([
+              z.string(),
+              z.object({
+                linkedinUrl: z.string(),
+                name: z.string().optional(),
+                customData: z.record(z.string()).optional(),
+              }),
+            ]),
+          )
+          .optional()
+          .describe("Additional target leads to monitor (for 'update', subject to org 150 leads quota)."),
+        removeLeadUrls: z
+          .array(z.string())
+          .optional()
+          .describe("List of LinkedIn URLs to remove from monitoring (for 'update')."),
+        status: z
+          .enum(["active", "paused"])
+          .optional()
+          .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt (for 'update')."),
       }),
-      outputSchema: subscriptionOutputSchema,
+      outputSchema: leadSubscriptionsOutputSchema,
     },
-    async ({ subscriptionId }) => {
+    async ({
+      action,
+      subscriptionId,
+      name,
+      leads,
+      frequencyDays,
+      runImmediately,
+      webhookUrl,
+      addLeads,
+      removeLeadUrls,
+      status,
+    }) => {
       try {
-        console.log(
-          `[Tool] precept_delete_job_posting_subscription starting... subscriptionId=${subscriptionId}`,
-        );
-        const response = await axios.delete(
-          `${PRECEPT_API_URL}/v1/subscriptions/job-postings/${subscriptionId}`,
-          { headers: getHeaders() },
-        );
-        return formatResponse(response.data);
+        console.log(`[Tool] precept_lead_subscriptions starting... action=${action}`);
+
+        if (action === "list") {
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/subscriptions/leads`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        if (action === "create") {
+          if (!leads || leads.length === 0) {
+            return formatResponse({
+              success: false,
+              message: "Missing required parameter 'leads' for action 'create'.",
+            });
+          }
+          const response = await axios.post(
+            `${PRECEPT_API_URL}/v1/subscriptions/leads`,
+            {
+              name,
+              leads,
+              frequencyDays,
+              runImmediately,
+              webhookUrl,
+            },
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        // 'get', 'update', 'delete' require subscriptionId
+        if (!subscriptionId) {
+          return formatResponse({
+            success: false,
+            message: `Missing required parameter 'subscriptionId' for action '${action}'.`,
+          });
+        }
+
+        if (action === "get") {
+          const response = await axios.get(
+            `${PRECEPT_API_URL}/v1/subscriptions/leads/${subscriptionId}`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        if (action === "update") {
+          const updateFields: any = {};
+          if (name !== undefined) updateFields.name = name;
+          if (frequencyDays !== undefined) updateFields.frequencyDays = frequencyDays;
+          if (addLeads !== undefined) updateFields.addLeads = addLeads;
+          if (removeLeadUrls !== undefined) updateFields.removeLeadUrls = removeLeadUrls;
+          if (webhookUrl !== undefined) updateFields.webhookUrl = webhookUrl;
+          if (status !== undefined) updateFields.status = status;
+
+          const response = await axios.patch(
+            `${PRECEPT_API_URL}/v1/subscriptions/leads/${subscriptionId}`,
+            updateFields,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        if (action === "delete") {
+          const response = await axios.delete(
+            `${PRECEPT_API_URL}/v1/subscriptions/leads/${subscriptionId}`,
+            { headers: getHeaders() },
+          );
+          return formatResponse(response.data);
+        }
+
+        return formatResponse({ success: false, message: `Unknown action: ${action}` });
       } catch (error) {
-        return formatError(
-          error,
-          `deleting job posting subscription '${subscriptionId}'`,
-        );
+        return formatError(error, `lead subscription action '${action}'`);
       }
     },
   );

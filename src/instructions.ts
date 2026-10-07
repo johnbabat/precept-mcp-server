@@ -25,7 +25,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   3. **Also ask if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
 
 ### 2. Always Check and Verify User Credits Before Any Search or Enrichment
-- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`, or \`precept_create_job_posting_subscription\`, **ALWAYS call \`precept_check_credits\` first**.
+- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`, or \`precept_job_posting_subscriptions\`, **ALWAYS call \`precept_check_credits\` first**.
 - **Credit Volume Verification**: Before searching for *any* number of items — including the default first attempt of 30 items or any user-requested volume — the AI assistant **MUST verify that the user has enough credits to return that volume**.
 - Compare the user's available credits against the estimated cost of the requested operation.
 
@@ -143,7 +143,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - If the user asks for a specific, niche, or bespoke title (e.g. \`"RevOps"\`, \`"Growth Hacker"\`, \`"Solutions Architect"\`, \`"Underwriting Manager"\`, \`"Full Stack Engineer"\`), pass those strings in \`jobTitles\`.
 - **Role Limits** (differ by tool type):
   - **Company Enrichments** (\`precept_get_company_insights\`, \`precept_search_companies\`): Combined \`departments + jobTitles\` must not exceed **40**.
-  - **Subscriptions** (\`precept_create_job_posting_subscription\`, \`precept_update_job_posting_subscription\`): Max **5 departments** and max **10 job titles** per subscription.
+  - **Subscriptions** (\`precept_job_posting_subscriptions\`): Max **5 departments** and max **10 job titles** per subscription.
   - If more roles are requested than the limit allows, narrow them down to the most relevant to avoid a 400 Bad Request error from the API.
 
 ---
@@ -233,10 +233,11 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   Total Estimated Credits = (1.0 base + queryCost + enrichmentCost) * companiesCount
   \`\`\`
 
-### 6. Job Posting Subscriptions (\`precept_create_job_posting_subscription\`)
+### 6. Job Posting Subscriptions (\`precept_job_posting_subscriptions\`)
 - Supports two subscription modes on a recurring cadence (7 to 30 days):
   1. **Query-Driven Mode (\`query: string\`)**: Provide a natural language search query string describing target jobs, industries, employee size, and countries (e.g. *"active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US"*). Precept automatically analyzes the query using AI (GPT-5.5) and generates the search filters and Elasticsearch DSL query, same as company and lead search. In this mode, do NOT provide \`companies\`, \`departments\`, or \`jobTitles\`.
   2. **Company List Mode (\`companies: array\`)**: Explicitly monitors up to 100 target companies and optional \`departments\` (max 5) or \`jobTitles\` (max 10).
+- **Actions**: \`action: 'create' | 'get' | 'update' | 'list' | 'delete'\`.
 - **Credit Billing per Run**:
   - **Job Posting Search**: \`0 credits\` (free / included in subscriptions; Precept monitors your companies or market queries without charging search credits).
   - **Decision Makers**: \`0.5 credits / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
@@ -256,6 +257,19 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.
   - Always verify the user has enough credits with \`precept_check_credits\` before creating a subscription.
 
+### 7. Lead Signal Subscriptions (\`precept_lead_subscriptions\`)
+- Monitors specific target people/leads by their LinkedIn URLs for:
+  1. **Job Changes**: Switching employers or companies.
+  2. **Role Title Changes**: Internal promotions or title switches.
+  3. **LinkedIn Posts & Activity**: Detects new LinkedIn posts and retrieves the post content using CoreSignal activity objects.
+- **Actions**: \`action: 'create' | 'get' | 'update' | 'list' | 'delete'\`.
+- **Key Rules & Limits**:
+  - **Cadence**: 7 to 30 days (default: 7).
+  - **Organization Limit**: Each organization is strictly limited to a total of **150 subscribed leads** across all active subscriptions.
+  - **Initial Upload Baseline**: Precept resolves each lead from CoreSignal on upload to save their baseline company and job title, and seed existing activities.
+  - **Subsequent Runs**: Checks CoreSignal on schedule or on demand and returns only people who had a change and the exact change they had, as well as new LinkedIn posts.
+  - Supports \`runImmediately: true\` (default: true) and optional \`webhookUrl\`.
+
 ---
 
 ## ⚡ AUTOMATIC CREDIT CAPPING (PRECEPT BEHAVIOR)
@@ -268,7 +282,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 ## 🚀 AUTOMATED OUTREACH & CAMPAIGN QUEUE MANAGEMENT
 
 ### 1. Extension Verification Before Outreach & Messaging
-- Before queuing any LinkedIn outreach campaign (\`precept_queue_campaign\`) OR sending a direct message (\`precept_send_message\`), **ALWAYS call \`precept_get_extension_status\`** to check if the user's Precept Chrome extension is active (\`active === true\`).
+- Before queuing any LinkedIn outreach campaign (\`precept_campaign_queue\` with action \`"queue"\`) OR sending a direct message (\`precept_linkedin_messages\` with action \`"send"\`), **ALWAYS call \`precept_get_extension_status\`** to check if the user's Precept Chrome extension is active (\`active === true\`).
 - Automated outreach and direct messages execute safely in the background of Google Chrome via this extension using direct authenticated requests.
   - **No Precept web app tab or active LinkedIn tab needs to stay open**; actions run continuously in the background whenever Google Chrome is open.
 - **If Extension is Missing or Inactive**:
@@ -280,24 +294,24 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 ### 2. Ad-Hoc Lead Queuing Directly from Search Results
 - When the user searches for leads using \`precept_search_leads\` and expresses intent to connect (e.g. "reach out to these leads", "connect with them", "start a campaign for these people"):
   - You do **NOT** need to create a pre-saved lead list first.
-  - Simply map the search results directly into the \`leads\` array of \`precept_queue_campaign\`:
+  - Simply call \`precept_campaign_queue\` with \`action: "queue"\` and map the search results directly into the \`leads\` array:
     \`[{ name: lead.name, linkedinUrl: lead.linkedinUrl, company: lead.company, title: lead.title }]\`
   - Leave \`autoSaveLeadsList: true\` (default). Precept will automatically create and save a new list in their Precept dashboard so their leads remain organized.
 
 ### 3. Queue Discipline & FIFO Execution
 - Only one campaign can actively connect at a time to strictly safeguard the user's LinkedIn account reputation and prevent rate limit flags.
-- If a campaign is already executing (\`status: "running"\` or \`"paused"\`), \`precept_queue_campaign\` automatically appends the new campaign to the queue in FIFO order with an incremental \`queuePosition\` (1 = next in line).
+- If a campaign is already executing (\`status: "running"\` or \`"paused"\`), \`precept_campaign_queue\` (\`action: "queue"\`) automatically appends the new campaign to the queue in FIFO order with an incremental \`queuePosition\` (1 = next in line).
 - Inform the user of their campaign's status and position in line.
 
 ### 4. Visibility into Current Outreach Queue
-- Use \`precept_get_outreach_queue\` to report full queue transparency:
+- Use \`precept_campaign_queue\` with \`action: "get_queue"\` to report full queue transparency:
   - Active campaign name, connection progress (e.g. \`14/50 leads connected\`), and status.
   - Any active rate limit cool-off countdowns (\`rateLimitPause.remainingMinutes\`).
   - Conversion metrics (invitations sent, invitations accepted).
   - Upcoming queued campaigns with their queue positions.
 
 ### 5. Managing Queue & Outreach Controls
-- Use \`precept_manage_queue\` to control execution:
+- Use \`precept_campaign_queue\` to control execution:
   - \`action: "pause"\`: Temporarily pause active outreach.
   - \`action: "resume"\`: Resume a paused campaign.
   - \`action: "archive"\` (or \`"cancel"\`): Archive an active or paused campaign to History, allowing upcoming queued campaigns to advance.
@@ -305,17 +319,17 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ### 6. Sending 1-on-1 Direct Messages via LinkedIn
 - **Mandatory Pre-Flight Extension Check & Version Requirement**:
-  - Before calling \`precept_send_message\`, the AI assistant **MUST first call \`precept_get_extension_status\`** to verify that the user's Precept Chrome extension is active (\`active === true\`).
-  - **Minimum Version v1.1.3**: Inspect \`extensionVersion\`. Direct messaging requires extension version **1.1.3 or higher**. If \`extensionVersion\` is below 1.1.3 (e.g. \`1.1.1\` or \`1.1.2\`), do NOT call \`precept_send_message\`; immediately inform the user:
+  - Before calling \`precept_linkedin_messages\` (\`action: "send"\`), the AI assistant **MUST first call \`precept_get_extension_status\`** to verify that the user's Precept Chrome extension is active (\`active === true\`).
+  - **Minimum Version v1.1.3**: Inspect \`extensionVersion\`. Direct messaging requires extension version **1.1.3 or higher**. If \`extensionVersion\` is below 1.1.3 (e.g. \`1.1.1\` or \`1.1.2\`), do NOT call \`precept_linkedin_messages\`; immediately inform the user:
     > *"Direct messaging requires Precept Chrome extension v1.1.3 or higher. You are currently running v{extensionVersion}. Please update or reload your extension in \`chrome://extensions\` to enable direct messaging."*
   - If the extension is not active or not installed, do NOT send the message; instruct the user to ensure Google Chrome is open and logged into LinkedIn.
 - **Sending the Message**:
-  - Use \`precept_send_message\` with \`recipient: { name, linkedinUrl, company, title }\` and \`message\`.
+  - Use \`precept_linkedin_messages\` with \`action: "send"\`, \`recipient: { name, linkedinUrl, company, title }\`, and \`message\`.
   - Always advise keeping the message concise (under 200 characters) so it cleanly fits as a connection request note if the recipient is not yet connected.
   - Returns a \`messageId\` and confirms dispatch.
 - **Mandatory Delivery Status Polling (Up to 40 Attempts)**:
-  - Once \`precept_send_message\` returns a \`messageId\`, the AI assistant **MUST continuously check its status using \`precept_get_message_status\`**.
-  - Poll \`precept_get_message_status\` **up to 40 times** (waiting 3–5 seconds between attempts) as long as status is \`pending\`.
+  - Once dispatch returns a \`messageId\`, the AI assistant **MUST continuously check its status using \`precept_linkedin_messages\` with \`action: "get_status"\` and \`messageId\`**.
+  - Poll **up to 40 times** (waiting 3–5 seconds between attempts) as long as status is \`pending\`.
   - **Success / Completed**: When status becomes \`sent\`, report success and whether it delivered as a direct message or connection note.
   - **Already Pending**: When status becomes \`already_pending\`, inform the user that an invitation is already pending for this lead.
   - **Failure / Error**: When status becomes \`failed\`, immediately inform the user with the exact \`error\` details returned by the tool (the extension reports the precise reason, e.g. session expired, profile inaccessible, or LinkedIn rate limit).
