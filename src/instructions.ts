@@ -190,6 +190,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ### 3. Lead Enrichment (\`precept_enrich_leads\`)
 - **Base AI Insights**: \`1.0 credit / lead\`
+- **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
+  - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
+  - Channels: \`'email'\` (PIPE framework: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or \`'linkedin'\` (SHIP framework: Signal, Hypothesis, Intro, Personalisation).
+  - Returns \`email_message\`, \`email_subject\`, \`linkedin_message\`, and structured \`message_templates\`.
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
   - Phones only: \`+10 credits / lead\`

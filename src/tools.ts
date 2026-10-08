@@ -853,6 +853,12 @@ export function registerAllTools(
           .describe(
             "Optional array of up to 5 keyword interests for the batch (e.g. ['Banking', 'Insurance']). Precept researches the web to find verified information about each person related to these topics and appends findings as '[<Keyword> Interest]: ...' paragraphs to their professional summary.",
           ),
+        generateMessage: z
+          .array(z.enum(["email", "linkedin"]))
+          .optional()
+          .describe(
+            "Optional array specifying outreach channels to generate personalized messages for: 'email' (PIPE framework cold email: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or 'linkedin' (SHIP framework conversational connection/DM: Signal, Hypothesis, Intro, Personalisation). Generates high-converting, tailored outreach copy using lead's profile, company problems, initiatives, and recent posts.",
+          ),
       }),
       outputSchema: asyncJobInitOutputSchema,
     },
