@@ -529,7 +529,7 @@ const leadSubscriptionsOutputSchema = z
     latestResult: z
       .any()
       .optional()
-      .describe("Latest detected signals including job/role changes and LinkedIn posts"),
+      .describe("Latest detected signals including job/role changes, relevant LinkedIn posts, relevant comments, and AI-generated outreach templates"),
   })
   .passthrough()
   .describe("Result of lead signal subscription operations (create, get, update, list, delete)");
@@ -1654,11 +1654,11 @@ export function registerAllTools(
     "precept_lead_subscriptions",
     {
       description:
-        "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, and new LinkedIn posts. " +
+        "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, new LinkedIn posts, and recent relevant comments. " +
         "Actions: " +
-        "- 'create': Subscribe to monitor leads (up to 150 total leads org quota) with a 7-30 day cadence. Baseline company/title is saved on initial run. " +
-        "- 'get': Retrieve subscription details and latest detected signals (job/title changes, LinkedIn post content). " +
-        "- 'update': Add/remove leads, modify cadence (7-30d), set/clear webhookUrl, or pause/resume. " +
+        "- 'create': Subscribe to monitor leads (up to 150 total leads org quota) with a 7-30 day cadence and optional company description for AI relevance evaluation. Baseline company/title is saved on initial run. " +
+        "- 'get': Retrieve subscription details and latest detected signals (job/title changes, LinkedIn post content, relevant comments, and generated outreach message templates). " +
+        "- 'update': Add/remove leads, modify cadence (7-30d), update company description, set/clear webhookUrl, or pause/resume. " +
         "- 'list': List all lead subscriptions with lead counts, quota usage, and schedules. " +
         "- 'delete': Cancel and permanently remove a lead subscription.",
       inputSchema: z.object({
@@ -1673,6 +1673,10 @@ export function registerAllTools(
           .string()
           .optional()
           .describe("Descriptive name for this lead subscription (for 'create' or 'update')."),
+        description: z
+          .string()
+          .optional()
+          .describe("Context on what your company does or topics you care about. Used by AI to evaluate relevance of candidate LinkedIn posts and comments (for 'create' or 'update')."),
         leads: z
           .array(
             z.union([
@@ -1732,6 +1736,7 @@ export function registerAllTools(
       action,
       subscriptionId,
       name,
+      description,
       leads,
       frequencyDays,
       runImmediately,
@@ -1762,6 +1767,7 @@ export function registerAllTools(
             `${PRECEPT_API_URL}/v1/subscriptions/leads`,
             {
               name,
+              description,
               leads,
               frequencyDays,
               runImmediately,
@@ -1791,6 +1797,7 @@ export function registerAllTools(
         if (action === "update") {
           const updateFields: any = {};
           if (name !== undefined) updateFields.name = name;
+          if (description !== undefined) updateFields.description = description;
           if (frequencyDays !== undefined) updateFields.frequencyDays = frequencyDays;
           if (addLeads !== undefined) updateFields.addLeads = addLeads;
           if (removeLeadUrls !== undefined) updateFields.removeLeadUrls = removeLeadUrls;
