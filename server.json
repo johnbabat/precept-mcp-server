@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "uk.co.preceptai/precept",
+  "title": "Precept",
+  "description": "B2B lead and company intelligence: search leads, enrich contacts, and queue outreach.",
+  "version": "1.2.34",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://precept-mcp-server-production.up.railway.app/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@preceptai/mcp-server",
+      "version": "1.2.34",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PRECEPT_API_KEY",
+          "description": "API key from the Precept Developer Dashboard",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
