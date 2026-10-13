@@ -1,65 +1,155 @@
 # Precept MCP Server
 
-> Expose [Precept's](https://preceptai.co.uk) B2B contact and company intelligence tools directly to AI assistants like **Claude Desktop**, **Cursor**, and **ChatGPT**.
+[![npm version](https://img.shields.io/npm/v/@preceptai/mcp-server.svg)](https://www.npmjs.com/package/@preceptai/mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
+[![Model Context Protocol](https://img.shields.io/badge/MCP-Standard-blue.svg)](https://modelcontextprotocol.io)
 
-This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and wraps Precept's core API. All operations are **non-blocking** — jobs return immediately with an `enrichment_id`, and results are polled via a separate status tool. This avoids LLM client timeouts on long running jobs.
+Expose [Precept's](https://preceptai.co.uk) enterprise B2B lead discovery, company intelligence, signal monitoring, and automated LinkedIn outreach directly inside AI assistants like **Claude (Web & Desktop)**, **ChatGPT**, **Cursor**, and **Codex**.
 
-Supports dual-transport bootstrapping:
-
-- **`stdio`** — for local integrations (Claude Desktop, Cursor)
-- **Streamable HTTP** — for remote hosting (ChatGPT, enterprise agents)
+This server implements the open [Model Context Protocol (MCP)](https://modelcontextprotocol.io) specification. It enables LLMs to search millions of verified decision makers, enrich contact details via a 140+ provider waterfall, monitor hiring and career moves, and orchestrate automated outreach campaigns without leaving the conversation.
 
 ---
 
-## Tools
+## Architecture & Transports
 
-| Tool                           | Description                                                                                                                                                                                                                |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `precept_search_leads`         | Search for leads using natural language (e.g. _"Marketing heads at SaaS companies in California"_). Optionally enrich with verified emails, phone numbers, and AI insights. Returns a `jobId`.                             |
-| `precept_enrich_leads`         | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Returns verified emails, phones, professional summary, top problems, and strategic initiatives. Returns a `jobId`.                       |
-| `precept_get_company_insights` | Retrieve structured insights for specific companies — decision makers, technology stack, revenue, funding, employee counts, department ratios, and custom queries. Returns a `jobId`.                                      |
-| `precept_search_companies`     | Discover companies using natural language queries and optionally enrich with insights. Returns a `jobId`.                                                                                                                  |
-| `precept_get_job_status`       | Poll the status and retrieve results of any job. Poll every 4s for up to 150 attempts (~10m) while in progress and update user every 15 polls (~1m). Returns `processing` (with progress) or `completed` (with full data). |
-| `precept_check_credits`        | Check the remaining credit balance for your Precept account and server version status.                                                                                                                                     |
-| `precept_check_version`        | Check the running server version against the latest published release to see if a connector update is available.                                                                                                           |
+Precept MCP Server supports dual-transport bootstrapping:
 
-### How It Works (Async Job Pattern)
+- **Streamable HTTP (Remote OAuth 2.1)**: Hosted endpoint for cloud AI platforms (**Claude.ai**, **ChatGPT**), enterprise agents, and browser clients. Uses standard OAuth 2.1 with PKCE.
+- **`stdio` (Local CLI)**: Standard input/output transport for local developer tools (**Claude Desktop**, **Cursor**, **Codex**, CLI agents) powered by `npx -y @preceptai/mcp-server`.
+
+All heavy data operations are **non-blocking and asynchronous**: jobs immediately return an `enrichment_id` (`jobId`), and the assistant polls progress via `precept_get_job_status` until complete. This prevents LLM client timeouts on deep web research and waterfall data lookups.
+
+---
+
+## Available Tools
+
+Precept MCP Server exposes **13 specialized tools** organized across lead discovery, account intelligence, signal subscriptions, outreach automation, and system utilities:
+
+### 1. Lead & Contact Discovery
+
+| Tool | Description |
+| :--- | :--- |
+| `precept_search_leads` | Search and discover business leads using natural language queries (e.g. *"Marketing heads at SaaS companies in California with 50-200 employees"*). Supports optional waterfall contact enrichment (verified emails and direct dials) and AI-generated prospect profiles. |
+| `precept_get_leads_from_post_search` | Discover high-intent prospects actively engaging (posting, commenting, reacting) with specific topics on LinkedIn over the past 24 hours, week, or month. |
+| `precept_enrich_leads` | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Delivers verified emails, phone numbers, professional summary, top problems, and strategic initiatives. |
+
+### 2. Company & Account Intelligence
+
+| Tool | Description |
+| :--- | :--- |
+| `precept_search_companies` | Discover accounts matching specific criteria (industry, headcount, geography, revenue, recent funding, tech stack). Optionally extracts key department heads and employee breakdowns. |
+| `precept_get_company_insights` | Retrieve deep structured intelligence on target accounts: decision makers across 40 canonical departments, installed technologies, funding history, revenue, employee growth trends, and department ratios. |
+
+### 3. Hiring & Market Signal Subscriptions
+
+| Tool | Description |
+| :--- | :--- |
+| `precept_job_posting_subscriptions` | Monitor real-time hiring triggers on a 7–30 day schedule. Supports natural language queries (*"active AI or ML jobs in healthcare"*) or monitoring up to 100 target accounts. Automatically extracts relevant decision makers for each open role with zero duplicate billing. |
+| `precept_lead_subscriptions` | Track up to 150 target decision makers per organization for career moves: job changes, internal promotions, title updates, and new LinkedIn posts. |
+
+### 4. Automated LinkedIn Outreach (Chrome Extension)
+
+| Tool | Description |
+| :--- | :--- |
+| `precept_get_extension_status` | Checks if the user's [Precept Chrome Extension](https://chromewebstore.google.com/detail/precept/mlhpcomoechogpgbmjgpfenbmpflcfig) is installed and active. Required before launching outreach or dispatching messages. |
+| `precept_campaign_queue` | Queue discovered leads directly into automated LinkedIn outreach campaigns. Supports FIFO queue discipline, progress tracking, rate-limit safety pauses, resuming, pausing, and archiving campaigns. Runs safely in Chrome background without needing Precept or LinkedIn tabs open. |
+| `precept_linkedin_messages` | Dispatches 1-on-1 direct messages or connection request notes via LinkedIn with automated delivery status verification and error diagnostics. |
+
+### 5. Utility & System
+
+| Tool | Description |
+| :--- | :--- |
+| `precept_get_job_status` | Polls progress and retrieves complete structured results for any async search or enrichment job. Returns progress percentages while processing and full datasets upon completion. |
+| `precept_check_credits` | Checks remaining account credit balance and connector version status before initiating operations. |
+| `precept_check_version` | Validates running connector version against the latest release to check if updates are available. |
+
+---
+
+## How It Works (Async Non-Blocking Pattern)
 
 ```
-User → "Find CTOs at fintech startups in London"
-  ↓
-LLM calls precept_search_leads → returns { enrichment_id: "job_123" }
-  ↓
-LLM continuously polls precept_get_job_status("job_123") every 4 seconds for up to 150 attempts (~10 minutes)
-  ↓
-LLM gives progress/status updates to the user every 15 polls (~1 minute)
-  ↓
-If still processing → LLM keeps polling every 4 seconds
-If completed → LLM receives full results with contact details and presents them to the user
-If reaches 150 attempts (~10m) still in progress → LLM asks user to check back in a few minutes as it is taking longer than usual
+User: "Find 20 VP of Sales at fintech companies in New York"
+  │
+  ▼
+LLM calls `precept_check_credits` → verifies sufficient balance
+  │
+  ▼
+LLM calls `precept_search_leads` → returns { enrichment_id: "job_94827" }
+  │
+  ▼
+LLM polls `precept_get_job_status("job_94827")` every 4s (up to 150 attempts / 10m)
+  │ Updates user with progress every ~1 minute
+  ▼
+Job completes → LLM presents full structured table/artifact with contacts
+  │
+  ▼
+Follow-up: LLM offers to enrich phone numbers or queue LinkedIn outreach
 ```
 
 ---
 
 ## Client Setup
 
-The Precept MCP server is designed to run directly inside your LLM client.
+### Step 1: Create Account & Get API Key
 
-### Step 1: Sign Up & Get Your Precept API Key
-
-1. **Sign Up**: Create an account or sign in at [app.preceptai.co.uk](https://app.preceptai.co.uk/auth).
-2. **Access Dashboard**: Navigate to the [Precept Developer Dashboard](https://app.preceptai.co.uk/developer).
-3. **Generate API Key**: Click **Generate New API Key** and copy your key (starts with `pt_` or `precept_sk_...`). Treat this key like a password.
+1. Sign up or log in at [app.preceptai.co.uk](https://app.preceptai.co.uk/auth).
+2. Go to the [Precept Developer Dashboard](https://app.preceptai.co.uk/developer).
+3. Click **Generate New API Key** and copy your key (`pt_...`).
 
 ---
 
-### Step 2: Configure Your Client
+### Option A: Remote Setup (Claude.ai Web, Claude Desktop App, & ChatGPT)
 
-- **Node.js**: v20+
+Both **Claude (Web & Desktop apps)** and **ChatGPT** connect to Precept via remote **Streamable HTTP** using OAuth 2.1. Once added in your Claude account, connectors automatically sync across web, desktop, and mobile:
 
-#### 1. Claude Desktop
+#### 1. Claude (Web & Desktop App)
+1. In Claude.ai or the Claude Desktop app, open **Settings** (or **Customize**) → **Connectors**.
+2. Click **Add Custom Connector** (or **+**).
+3. Fill in the connector details:
+   - **Name:** `Precept AI`
+   - **Remote MCP Server URL:** `https://precept-mcp-server-production.up.railway.app/mcp`
+   - **Client ID:** `claude`
+4. Click **Save** then click **Connect**.
+5. When the authorization window appears, paste your **Precept API Key** to authorize the connector.
 
-Add this config to your Claude Desktop configuration file (typically at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+#### 2. ChatGPT (Web & Desktop)
+1. In ChatGPT, open **Settings** → **Connected apps** / **Developer Mode**.
+2. Add a new remote MCP connector:
+   - **URL:** `https://precept-mcp-server-production.up.railway.app/mcp`
+3. Click **Connect**. When the authorization window appears, paste your **Precept API Key** to authorize the connector.
+
+---
+
+### Option B: Local CLI & IDE Setup (Claude Code, Cursor, Codex)
+
+Developer CLI agents and IDEs execute the server locally over `stdio` via `npx` using your API key:
+
+#### 1. Claude Code (Anthropic CLI)
+Run the following in your terminal:
+```bash
+claude mcp add --env PRECEPT_API_KEY=pt_your_api_key_here precept -- npx -y @preceptai/mcp-server
+```
+*(Supports `--scope user` to make Precept available globally across all projects, or `--scope project` to save into `.mcp.json`)*.
+
+Prefer the hosted connector instead? Claude Code also supports remote servers:
+```bash
+claude mcp add --transport http precept https://precept-mcp-server-production.up.railway.app/mcp
+```
+Then run `/mcp` inside Claude Code to complete authorization.
+
+#### 2. Cursor
+1. Go to **Settings** → **Features** → **MCP**.
+2. Click **+ Add New MCP Server**.
+3. Configure:
+   - **Name:** `Precept`
+   - **Type:** `command`
+   - **Command:** `npx -y @preceptai/mcp-server`
+4. Set `PRECEPT_API_KEY=pt_your_api_key_here` in your environment or workspace `.env`.
+
+#### 3. Claude Desktop (Alternative: Local `stdio` mode)
+If you prefer running the server locally in Claude Desktop instead of using the remote OAuth connector, add this to `claude_desktop_config.json`:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -68,104 +158,100 @@ Add this config to your Claude Desktop configuration file (typically at `~/Libra
       "command": "npx",
       "args": ["-y", "@preceptai/mcp-server"],
       "env": {
-        "PRECEPT_API_KEY": "your_precept_api_key_here"
+        "PRECEPT_API_KEY": "pt_your_api_key_here"
       }
     }
   }
 }
 ```
 
-_(Make sure to completely restart/quit Claude Desktop after editing this file)._
-
-#### 2. Cursor
-
-Go to **Settings** → **Features** → **MCP**:
-
-1. Click **+ Add New MCP Server**
-2. **Name:** `Precept` | **Type:** `command`
-3. **Command:** `npx -y @preceptai/mcp-server`
-4. Click **Save**
-5. Ensure your terminal has the `PRECEPT_API_KEY` environment variable set, or add it to a local `.env` file where Cursor is opened.
-
-#### 3. Codex
-
-Run the following CLI command:
-
+#### 4. Codex CLI
+Run:
 ```bash
-codex mcp add precept --env PRECEPT_API_KEY=your_api_key_here -- npx -y @preceptai/mcp-server
+codex mcp add precept --env PRECEPT_API_KEY=pt_your_api_key_here -- npx -y @preceptai/mcp-server
 ```
-
-_(Or add to `~/.codex/config.toml` under `[mcp_servers.precept]` if you prefer manual configuration)._
 
 ---
 
-## Remote Setup: Streamable HTTP Mode
+## Hosting Your Own Remote Instance
 
-For remote deployment (e.g., ChatGPT Web/Desktop or hosted agents), run the server over Streamable HTTP:
+To host your own remote Streamable HTTP server:
 
-### 1. Configure Environment
-
-Create a `.env` file in the project root:
-
-```env
-PRECEPT_API_KEY=your_precept_api_key_here
-MCP_TRANSPORT=http
-PORT=3000
-ALLOWED_HOSTS=your-mcp-domain.com
+```bash
+git clone https://github.com/johnbabat/precept-mcp-server.git
+cd precept-mcp-server
+npm install
+npm run build
 ```
 
-### 2. Start Server
+Configure environment variables in `.env`:
 
+```env
+PORT=3000
+MCP_TRANSPORT=http
+ALLOWED_HOSTS=your-domain.com
+JWT_SECRET=your-random-32-character-secret
+PRECEPT_API_URL=https://api.preceptai.co.uk
+```
+
+Start the server:
 ```bash
 npm start
 ```
-
-The server will expose a stateless MCP endpoint at `http://your-domain.com:3000/mcp`.
+The endpoint will be available at `http://your-domain.com:3000/mcp` with full OAuth 2.1 endpoints at `/authorize` and `/token`.
 
 ---
 
 ## Environment Variables
 
-| Variable          | Default               | Description                                                                                 |
-| :---------------- | :-------------------- | :------------------------------------------------------------------------------------------ |
-| `PRECEPT_API_KEY` | _(required)_          | Your Precept API key from the [Developer Dashboard](https://app.preceptai.co.uk/developer). |
-| `MCP_TRANSPORT`   | `stdio`               | Transport mode: `stdio` (local) or `http` (remote Streamable HTTP).                         |
-| `PORT`            | `3000`                | Port for HTTP mode.                                                                         |
-| `ALLOWED_HOSTS`   | `localhost,127.0.0.1` | Comma-separated allowed hosts for DNS rebinding protection (HTTP mode only).                |
+| Variable | Transport | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `PRECEPT_API_KEY` | `stdio` | *(required for stdio)* | Your Precept API key (`pt_...`). |
+| `MCP_TRANSPORT` | Both | `stdio` | Transport type: `stdio` (local CLI) or `http` (remote streamable HTTP). |
+| `PORT` | `http` | `3000` | Port for the HTTP server. |
+| `ALLOWED_HOSTS` | `http` | `localhost,127.0.0.1` | Comma-separated allowed hostnames for DNS rebinding protection. |
+| `JWT_SECRET` | `http` | *(auto-generated)* | Secret for signing OAuth tokens. **Set this in production** — if omitted, a random secret is generated and all connected users are logged out on every restart. |
+| `ALLOWED_REDIRECT_DOMAINS` | `http` | *(see source)* | Comma-separated domains allowed as OAuth `redirect_uri` targets (e.g. Claude and ChatGPT callback domains). |
+| `REDIS_URL` | `http` | *(optional)* | Redis connection string for persistent distributed auth code storage. Defaults to in-memory store. |
+| `PRECEPT_API_URL` | Both | `https://api.preceptai.co.uk` | Core Precept API endpoint. |
 
 ---
 
 ## Credits & Pricing
 
-All Precept API operations consume credits. Key costs:
+Precept API uses a credit-based model for data operations:
 
-| Operation                   | Cost                      |
-| :-------------------------- | :------------------------ |
-| Lead Search (no insights)   | 0.1 credits/lead          |
-| Lead Search (with insights) | 1.1 credits/lead          |
-| Lead Enrichment             | 1 credit/lead             |
-| Contact Details (email)     | +1 credit/lead            |
-| Contact Details (phone)     | +10 credits/lead          |
-| Company Base Insight        | 1 credit/company          |
-| Custom Query                | 0.2 credits/query/company |
-| Decision Makers             | 0.5 credits/person/role   |
-| Technology Stack            | 2 credits/company         |
-| Revenue                     | 5 credits/company         |
-| Post Activity Filter        | +5 credits/lead           |
+| Operation | Cost |
+| :--- | :--- |
+| **Lead Search** (basic profile) | `0.1 credits` / lead |
+| **Lead Search with AI Insights** | `1.1 credits` / lead |
+| **Lead Enrichment** (existing contact) | `1.0 credit` / lead |
+| **Verified Work Email** | `+1.0 credit` / lead |
+| **Verified Direct Phone Number** | `+10.0 credits` / lead |
+| **Both Email & Phone** | `+11.0 credits` / lead |
+| **Company Search / Base Insights** | `1.0 credit` / company |
+| **Custom AI Company Query** | `+0.2 credits` / query / company |
+| **Company Decision Makers** | `0.5 credits` / person |
+| **Company Tech Stack** | `2.0 credits` / company |
+| **Company Revenue / Funding** | `5.0 credits` / company |
+| **Job Posting Subscription Monitoring** | `0 credits` for search; `0.5 credits` / discovered decision maker |
+| **Post Activity Filter** | `+5 credits` / lead |
 
-See the full [Precept Credits Documentation](https://docs.preceptai.co.uk/essentials/credits) for details.
+*Full documentation on credit policies is available at [docs.preceptai.co.uk](https://docs.preceptai.co.uk/essentials/credits).*
 
 ---
 
-## Links
+## Useful Links
 
-- [Precept Website](https://preceptai.co.uk)
-- [Precept API Documentation](https://docs.preceptai.co.uk)
-- [Developer Dashboard](https://app.preceptai.co.uk/developer)
-- [Model Context Protocol](https://modelcontextprotocol.io)
+- **Precept Web App:** [app.preceptai.co.uk](https://app.preceptai.co.uk)
+- **Developer Dashboard:** [app.preceptai.co.uk/developer](https://app.preceptai.co.uk/developer)
+- **Official Documentation:** [docs.preceptai.co.uk](https://docs.preceptai.co.uk)
+- **Precept MCP Hub:** [preceptai.co.uk/mcp](https://www.preceptai.co.uk/mcp)
+- **Chrome Extension:** [Chrome Web Store](https://chromewebstore.google.com/detail/precept/mlhpcomoechogpgbmjgpfenbmpflcfig)
+- **GitHub Repository:** [github.com/johnbabat/precept-mcp-server](https://github.com/johnbabat/precept-mcp-server)
 
 ---
 
 ## License
 
-MIT
+MIT © Precept AI
