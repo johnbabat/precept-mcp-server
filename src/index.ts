@@ -399,7 +399,8 @@ const AUTHORIZE_HTML_TEMPLATE = `
       
       <div class="footer-text">
         Need an API key? <a href="https://app.preceptai.co.uk/auth" target="_blank" rel="noopener noreferrer">Sign up for Precept</a> or find your key on the <a href="https://app.preceptai.co.uk/developer" target="_blank" rel="noopener noreferrer">Developer Dashboard</a>.<br>
-        Your credentials are encrypted in-transit and stored securely.
+        By authorizing, you agree to Precept's <a href="https://www.preceptai.co.uk/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="https://www.preceptai.co.uk/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.<br>
+        Support: <a href="mailto:john@preceptai.co.uk">john@preceptai.co.uk</a> &bull; Credentials are encrypted in-transit and stored securely.
       </div>
     </div>
   </div>
@@ -557,6 +558,14 @@ async function main() {
         });
       },
     );
+
+    // ──────────────────────────────────────────
+    // OpenAI Apps Challenge (Domain Verification)
+    // ──────────────────────────────────────────
+    app.get("/.well-known/openai-apps-challenge", (req, res) => {
+      const token = process.env.OPENAI_APPS_CHALLENGE_TOKEN || "";
+      res.type("text/plain").send(token);
+    });
 
     // ──────────────────────────────────────────
     // GET /authorize (Render UI)

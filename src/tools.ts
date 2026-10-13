@@ -544,6 +544,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_search_leads",
     {
+      title: "Search Leads",
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
@@ -618,6 +619,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Search Leads",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async (args) => {
       try {
@@ -645,6 +651,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_get_leads_from_post_search",
     {
+      title: "Leads from LinkedIn Posts",
       description:
         "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
@@ -731,6 +738,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Leads from LinkedIn Posts",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async (args) => {
       try {
@@ -764,6 +776,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_enrich_leads",
     {
+      title: "Enrich Leads",
       description:
         "Enrich a list of specific contacts with verified contact details and AI-powered insights. " +
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
@@ -861,6 +874,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Enrich Leads",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async (args) => {
       try {
@@ -888,6 +906,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_get_company_insights",
     {
+      title: "Get Company Insights",
       description:
         "Retrieve detailed insights and enrichments for a list of specific companies. " +
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
@@ -940,6 +959,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Get Company Insights",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async (args) => {
       try {
@@ -967,6 +991,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_search_companies",
     {
+      title: "Search Companies",
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies in Berlin'. " +
@@ -999,6 +1024,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Search Companies",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async (args) => {
       try {
@@ -1026,6 +1056,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_get_job_status",
     {
+      title: "Get Job Status",
       description:
         "Check the status and retrieve results of any Precept enrichment or search job. " +
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
@@ -1042,6 +1073,11 @@ export function registerAllTools(
           ),
       }),
       outputSchema: jobStatusOutputSchema,
+      annotations: {
+        title: "Get Job Status",
+        readOnlyHint: true,
+        destructiveHint: false,
+      },
     },
     async ({ jobId }) => {
       try {
@@ -1070,11 +1106,17 @@ export function registerAllTools(
   server.registerTool(
     "precept_check_credits",
     {
+      title: "Check Credit Balance",
       description:
         "Check the remaining credit balance for your Precept account. " +
         "Returns the total number of credits currently available for search and enrichment tasks, along with server version status.",
       inputSchema: z.object({}),
       outputSchema: checkCreditsOutputSchema,
+      annotations: {
+        title: "Check Credit Balance",
+        readOnlyHint: true,
+        destructiveHint: false,
+      },
     },
     async () => {
       try {
@@ -1102,11 +1144,17 @@ export function registerAllTools(
   server.registerTool(
     "precept_check_version",
     {
+      title: "Check Server Version",
       description:
         "Check the current running version of the Precept MCP server against the latest published version. " +
         "Returns whether the server is up to date and provides instructions to refresh the connector if an update is available.",
       inputSchema: z.object({}),
       outputSchema: checkVersionOutputSchema,
+      annotations: {
+        title: "Check Server Version",
+        readOnlyHint: true,
+        destructiveHint: false,
+      },
     },
     async () => {
       try {
@@ -1130,12 +1178,18 @@ export function registerAllTools(
   server.registerTool(
     "precept_get_extension_status",
     {
+      title: "Get Extension Status",
       description:
         "Check whether the user's Precept Chrome extension is installed, active, and communicating with Precept. " +
         "Automated outreach runs in the background of Google Chrome via this extension (no open tabs or DOM interaction needed). " +
         "If the extension is not installed or inactive, the response contains instructions and a direct Chrome Web Store link for the user.",
       inputSchema: z.object({}),
       outputSchema: extensionStatusOutputSchema,
+      annotations: {
+        title: "Get Extension Status",
+        readOnlyHint: true,
+        destructiveHint: false,
+      },
     },
     async () => {
       try {
@@ -1160,6 +1214,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_campaign_queue",
     {
+      title: "Campaign Queue",
       description:
         "Manage LinkedIn outreach campaigns and the outreach queue. " +
         "Actions: " +
@@ -1202,6 +1257,11 @@ export function registerAllTools(
           .describe("Specific campaign ID to pause, resume, cancel/archive, or remove."),
       }),
       outputSchema: campaignQueueOutputSchema,
+      annotations: {
+        title: "Campaign Queue",
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
     },
     async ({
       action,
@@ -1264,6 +1324,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_linkedin_messages",
     {
+      title: "LinkedIn Messaging",
       description:
         "Send direct LinkedIn messages and check delivery status via the Precept Chrome extension. " +
         "Actions: " +
@@ -1319,6 +1380,11 @@ export function registerAllTools(
           .describe("The message ID returned by 'send' to check status for (required when action is 'get_status')."),
       }),
       outputSchema: linkedinMessagesOutputSchema,
+      annotations: {
+        title: "LinkedIn Messaging",
+        readOnlyHint: false,
+        destructiveHint: false,
+      },
     },
     async ({
       action,
@@ -1407,6 +1473,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_job_posting_subscriptions",
     {
+      title: "Job Subscriptions",
       description:
         "Manage automated recurring job posting subscriptions to monitor target companies or natural language queries for active hiring signals and discover decision makers. " +
         "Actions: " +
@@ -1483,6 +1550,11 @@ export function registerAllTools(
           .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt (for 'update')."),
       }),
       outputSchema: jobPostingSubscriptionsOutputSchema,
+      annotations: {
+        title: "Job Subscriptions",
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
     },
     async ({
       action,
@@ -1653,6 +1725,7 @@ export function registerAllTools(
   server.registerTool(
     "precept_lead_subscriptions",
     {
+      title: "Lead Subscriptions",
       description:
         "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, new LinkedIn posts, and recent relevant comments. " +
         "Actions: " +
@@ -1731,6 +1804,11 @@ export function registerAllTools(
           .describe("Change subscription status: 'active' to run on schedule, 'paused' to halt (for 'update')."),
       }),
       outputSchema: leadSubscriptionsOutputSchema,
+      annotations: {
+        title: "Lead Subscriptions",
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
     },
     async ({
       action,

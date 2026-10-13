@@ -3,7 +3,7 @@
   "name": "uk.co.preceptai/precept",
   "title": "Precept",
   "description": "B2B lead and company intelligence: search leads, enrich contacts, and queue outreach.",
-  "version": "1.2.34",
+  "version": "1.2.35",
   "remotes": [
     {
       "type": "streamable-http",
@@ -14,7 +14,7 @@
     {
       "registryType": "npm",
       "identifier": "@preceptai/mcp-server",
-      "version": "1.2.34",
+      "version": "1.2.35",
       "transport": {
         "type": "stdio"
       },
