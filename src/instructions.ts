@@ -8,80 +8,38 @@ import { SERVER_VERSION } from "./version.js";
 export const PRECEPT_INSTRUCTIONS = `# Precept MCP Server Instructions & Guidelines
 
 You are connected to Precept, an enterprise-grade B2B intelligence and lead discovery platform.
-Follow these mandatory operating guidelines and credit cost estimation rules when using Precept tools.
+This is reference information about how Precept's tools work and what they cost.
 
 ---
 
-## 🚨 MANDATORY WORKFLOW RULES FOR AI ASSISTANTS
+## How Precept works
 
-### 1. Default Search Limit (30 Items on First Attempt) & Follow-Up Options
-- Unless the user specifically asks for a specific number of leads or companies to return, **by default return only 30 on the first try**.
-- **DO NOT mention or ask about volume upfront**: Silently use the default of 30 leads. **DO NOT tell the user you are defaulting to 30 leads, and DO NOT ask how many leads they want before running the search.**
-- If the user specifically asks for a specific number in their initial message (e.g. "find 50 leads", "search for 100 companies"), use that requested amount directly (capped at 1000).
-- **Always Present Results in a Sheet Doc**: Always try to give users lead or company results in a sheet doc (spreadsheet document / sheet artifact).
-- **Mandatory Follow-Up AFTER Returning Results**: All volume and enrichment questions must come **AFTER** the first result is sent back to the user:
-  1. **First, explicitly tell the user that you only searched for 30 leads on this initial run**.
-  2. **Then, ask them if they want to find more leads**, asking them to **specify how many more** they would like to find.
-  3. **Also ask if they want to enrich the contacts** with verified **phone numbers** or **email addresses** (using \`precept_enrich_leads\`).
+### Credits
+- Searches and enrichments use Precept credits. Costs are listed under "Credit pricing" below; \`precept_check_credits\` shows the user's balance.
+- It's helpful to tell the user the estimated cost of a large request before running it, especially when contact details (emails/phones) are involved, since these cost much more.
+- If the balance is too low, Precept automatically reduces the number of results to what the credits cover (see "Automatic credit capping").
 
-### 2. Always Check and Verify User Credits Before Any Search or Enrichment
-- Before calling \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`, or \`precept_job_posting_subscriptions\`, **ALWAYS call \`precept_check_credits\` first**.
-- **Credit Volume Verification**: Before searching for *any* number of items — including the default first attempt of 30 items or any user-requested volume — the AI assistant **MUST verify that the user has enough credits to return that volume**.
-- Compare the user's available credits against the estimated cost of the requested operation.
+### Result volume
+- Lead and company searches return 30 results by default. Users can ask for more (up to 1000).
+- After showing results, users often want more results or contact details. Mentioning those options is helpful.
 
-### 3. Estimate Credit Costs and Warn the User if Credits are Low
-- Calculate the estimated credits required using the pricing formula below.
-- If the user does **NOT** have enough credits for the volume (even for the default 30 or requested amount):
-  - Inform them of their current credit balance and the required credits.
-  - Explain that Precept automatically scales down results to return only what their credits can cover (or fails if balance is 0).
-  - Confirm with the user if they would like to proceed with the capped limit or reduce their request parameters.
+### Contact details
+- Verified emails and phone numbers cost extra (+1 credit per email, +10 per phone, +11 for both per person) and make jobs take longer. Enable \`includeContactDetails\` when the user asks for contact details; otherwise they can be added later with \`precept_enrich_leads\`.
 
-### 4. Do Not Enrich Contact Details Unless Explicitly Requested (Never Ask Upfront)
-- By default, do **NOT** enable contact details enrichment (\`includeContactDetails: false\` or omitted) for lead or company searches/insights.
-- Finding verified contact details (especially phone numbers) consumes significantly more credits (+1 for emails, +10 for phones, or +11 for both per person) and increases waterfall search time.
-- **DO NOT ask the user upfront if they want contact details (emails or phones)** before executing the initial search. Proceed with basic lead discovery first.
-- Only enable contact details if the user **explicitly asked for contact info in their initial prompt** (e.g. "find their emails", "get phone numbers", "with contact details"). Otherwise, offer contact enrichment **AFTER** presenting the initial search results.
+### LinkedIn post search timeframe
+- \`precept_get_leads_from_post_search\` results depend heavily on the timeframe (past 24 hours, week or month). If the user hasn't specified one, it's worth asking.
 
-### 5. Always Ask for Post Search Timeframe (The ONLY Upfront Question Allowed)
-- When a user asks to search for posts or discover leads from LinkedIn posts (using \`precept_get_leads_from_post_search\`):
-  - **The ONLY question you may ask the user upfront is the timeframe**:
-    > *"Would you like to search posts from within the past 24 hours, the past week, or the past month?"*
-  - **STRICT PROHIBITION**:
-    - **DO NOT** tell the user you will search for 30 leads or ask them for a volume/limit.
-    - **DO NOT** ask the user if they want contact details (emails or phones).
-    - Give the user **ONLY the options to select the timeframe**. All other questions must come **AFTER** the first result is returned.
-  - **DO NOT silently default to \`month\`**: If the user did not specify a timeframe, always ask them first. If they already specified a timeframe in their prompt (e.g. "past 24 hours", "posted today", "this week", "past 7 days", "last month"), use that timeframe (\`24h\`, \`week\`, or \`month\`) and proceed immediately without asking.
+### Asynchronous jobs
+- \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\` and \`precept_get_company_insights\` run asynchronously and return an \`enrichment_id\` (jobId).
+- Use \`precept_get_job_status\` to check progress. Jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks gives the best experience. A short progress update to the user every minute or so (using \`progress.completed\` / \`progress.total\` when available) keeps them informed.
+- If a job is still running after that, it is usually still working: share the jobId so the user can check back later. If it fails, share the jobId and error details.
+- Lead and company results read well as a table (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone for leads; Company Name, Website, Industry, Employee Count, Location for companies).
 
-### 6. Asynchronous Job Handling & Polling Rules
-- All Precept search and enrichment tools (\`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, \`precept_get_company_insights\`) are **asynchronous** and return an \`enrichment_id\` (\`jobId\`).
-- **Continuous Polling Requirement (150 attempts, every 4 seconds = 10 minutes max)**:
-  - Once a search or enrichment job is initiated, the AI assistant **MUST continuously poll \`precept_get_job_status\` every 4 seconds for up to 150 attempts** (totaling up to 10 minutes) as long as the job is still in progress (\`pending\`, \`processing\`, or \`in_progress\`).
-  - **DO NOT stop polling prematurely** or assume a job has stalled before 150 poll attempts have completed (lead discovery, company intelligence, and phone waterfall lookups take time across multiple data sources).
-- **Mandatory User Updates (Every 15 Polls / ~1 Minute)**:
-  - While waiting and polling for results, the AI assistant **MUST provide updates to the user on what is happening at least every 15 polls (~1 minute)** (e.g. current poll attempt count, elapsed time, current status, and progress metrics such as \`progress.completed\` / \`progress.total\` items processed if available).
-- **Job Completion & 10-Minute Timeout Handling**:
-  - Once \`precept_get_job_status\` returns \`status: "completed"\`, retrieve and present the results clearly to the user.
-  - **Always Output in a Sheet Doc**: When presenting completed lead or company results to the user (from \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\`, or \`precept_get_company_insights\`), **ALWAYS try to give users the results in a sheet doc** (spreadsheet document / sheet artifact) containing all discovered leads or companies with their relevant columns (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone, Post URL/Snippet, Was Recently Hired for leads; and Company Name, Website, LinkedIn URL, Industry, Employee Count, Location for companies).
-  - **Mandatory Follow-Up Questions**: Immediately after presenting lead results, **always**:
-    1. If you searched only default 30 leads on the first run, first explicitly tell the user that you only searched for 30 leads on this initial run.
-    2. Then ask if they want to find more leads (and to specify how many more).
-    3. Ask if they want to enrich the contacts' phone numbers or email addresses.
-  - If the job reaches **150 poll attempts (~10 minutes)** and is still in progress, stop polling and tell the user to check back in a few minutes as this is taking longer than usual (provide the \`jobId\` so they can track it).
-  - If the job fails (\`status: "failed"\`), notify the user immediately with the \`jobId\` and any error details.
+### Server version
+- These instructions are for Precept MCP **v\${SERVER_VERSION}**. \`precept_check_credits\` and \`precept_check_version\` return the running \`serverVersion\`. If it is newer, the user can refresh their connection to get the latest tools: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools).
+- An \`InvalidParams\` or input/output validation error (e.g. MCP error -32602) usually means the client's cached tool schemas are out of date. Refreshing the connection fixes it; see the same guide.
 
-### 7. Server Versioning & Client Sync
-- Your instructions and tool schemas are configured for Precept MCP **v\${SERVER_VERSION}**.
-- Tools return \`versionStatus\` (e.g. in \`precept_check_credits\` and \`precept_check_version\`) with the running \`serverVersion\`.
-- If the returned \`serverVersion\` is higher than your configured version (v\${SERVER_VERSION}), inform the user that their client connection is behind:
-  > *"Tip: The Precept MCP server has been updated to a newer version. Please refresh your connection to sync the latest tools and features: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
-
-### 8. Handling Schema Validation Errors
-- If you ever receive an \`InvalidParams\`, \`Input validation error\`, or \`Output validation error\` (e.g. MCP error -32602) from any tool, it means your tool schemas are out of sync with the server.
-- **DO NOT attempt to guess the parameters or retry the same request.**
-- Immediately notify the user:
-  > *"My connection to Precept seems to be out of sync because the tool schemas have changed. Please refresh the connection so I can use the updated tools. For step-by-step instructions, see: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools)"*
-
-### 9. Departments, Role Limits & Conceptual Mapping
+### Departments, role limits & conceptual mapping
 - **Fixed List of 40 Canonical Departments**:
   Precept has a fixed dictionary of 40 canonical departments with automatic synonym expansion (e.g. \`Design\` automatically expands to \`Designer\`, \`Creative\`, \`Graphic\`, \`UX\`, \`UI\`, \`Visual\`, etc.):
   1. \`Underwriting\`
@@ -126,7 +84,7 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   40. \`Education\`
 
 - **Intelligent Conceptual Mapping**:
-  When a user asks for broad business functions, commercial terms, or conceptual domains not directly in the list, **you must map them to the most closely related canonical department(s)**:
+  When a user asks for broad business functions, commercial terms, or conceptual domains not directly in the list, map them to the most closely related canonical department(s):
   - **Commercial / GTM / Go-to-market**: Map to \`["Sales", "Marketing"]\`
   - **Revenue / Business Development**: Map to \`["Sales", "Finance & Accounting"]\`
   - **Engineering / Tech / Software / Developers**: Map to \`["Engineering and Technical", "Information Technology"]\`
@@ -167,14 +125,9 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ### 2. Post Search (\`precept_get_leads_from_post_search\`)
 - Discovers leads directly from authors who recently published LinkedIn posts matching keywords (without needing a persona query).
-- **Timeframe Selection Guidelines**:
-  - **DO NOT silently default to \`month\`**.
-  - If the user did not specify a timeframe in their prompt, **ALWAYS ask the user** whether they want to search posts from within the past 24 hours (\`24h\`), past week (\`week\`), or past month (\`month\`) before calling the tool.
-- **Keyword Generation Guidelines**:
-  - Keep keywords concise (1 to 3 words or a short phrase, e.g. \`['SEO problem', 'struggling with SEO']\` or \`['AI workflow', 'marketing automation']\`).
-  - **DO NOT** generate long conversational sentences or filler phrases (e.g. avoid \`'looking for a new senior product designer for our fintech startup'\`) as long phrases drastically lower search engine recall.
-- **Search Description Guideline**:
-  - Always provide a clear, comprehensive \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
+- **Timeframe**: results depend heavily on the timeframe (\`24h\`, \`week\` or \`month\`). If the user hasn't specified one, it's worth asking.
+- **Keywords**: short keywords of 1 to 3 words (e.g. \`['SEO problem', 'struggling with SEO']\` or \`['AI workflow', 'marketing automation']\`) match far more posts than long conversational sentences (e.g. \`'looking for a new senior product designer for our fintech startup'\`).
+- **Description**: a clear \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
 - **Post Search Activity Signal**: \`+5.0 credits / lead\`
@@ -256,10 +209,10 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
   - \`limit\` (Job Postings Scan Limit): When using \`query\`, you can configure how many active job postings to scan per run via \`limit\` (default is 30, min 1, max 100). Precept evaluates candidate jobs and extracts matching decision makers from up to this scan limit per run.
   - Max 100 companies per subscription (for company list mode).
   - Max 5 departments and max 10 job titles per subscription (for company list mode).
-  - Decision makers: Automatically aims for up to 10 per job found (we do not ask the user for a limit).
+  - Decision makers: Automatically aims for up to 10 per job found (not configurable).
   - Frequency: 7 to 30 days (default: 7).
   - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.
-  - Always verify the user has enough credits with \`precept_check_credits\` before creating a subscription.
+  - \`precept_check_credits\` shows whether the user has enough credits before creating a subscription.
 
 ### 7. Lead Signal Subscriptions (\`precept_lead_subscriptions\`)
 - Monitors specific target people/leads by their LinkedIn URLs for:
@@ -283,60 +236,28 @@ Follow these mandatory operating guidelines and credit cost estimation rules whe
 
 ---
 
-## 🚀 AUTOMATED OUTREACH & CAMPAIGN QUEUE MANAGEMENT
+## LinkedIn outreach & campaign queue
 
-### 1. Extension Verification Before Outreach & Messaging
-- Before queuing any LinkedIn outreach campaign (\`precept_campaign_queue\` with action \`"queue"\`) OR sending a direct message (\`precept_linkedin_messages\` with action \`"send"\`), **ALWAYS call \`precept_get_extension_status\`** to check if the user's Precept Chrome extension is active (\`active === true\`).
-- Automated outreach and direct messages execute safely in the background of Google Chrome via this extension using direct authenticated requests.
-  - **No Precept web app tab or active LinkedIn tab needs to stay open**; actions run continuously in the background whenever Google Chrome is open.
-- **If Extension is Missing or Inactive**:
-  - If \`installed === false\`: Instruct the user that automated LinkedIn outreach and messaging require the free Precept Chrome extension. Provide them with the direct installation link:
-    > *"To enable automated LinkedIn outreach and messaging, please install the Precept Chrome extension: [Install Precept Extension](https://chromewebstore.google.com/detail/precept/mlhpcomoechogpgbmjgpfenbmpflcfig). Once installed and logged into LinkedIn, outreach runs automatically in the background of Chrome."*
-  - If \`installed === true\` and \`active === false\`: Remind the user:
-    > *"The Precept Chrome extension is installed, but hasn't communicated with Precept recently. Please ensure Google Chrome is open and you are logged into LinkedIn so outreach and messaging can proceed."*
+### Precept Chrome extension
+- Campaigns (\`precept_campaign_queue\`, action \`"queue"\`) and direct messages (\`precept_linkedin_messages\`, action \`"send"\`) run through the user's Precept Chrome extension, in the background whenever Chrome is open and signed in to LinkedIn. No Precept or LinkedIn tab needs to stay open.
+- \`precept_get_extension_status\` shows whether the extension is installed, active, and which version is running. Checking it before outreach avoids failed sends.
+  - Not installed (\`installed === false\`): the extension is free from the [Chrome Web Store](https://chromewebstore.google.com/detail/precept/mlhpcomoechogpgbmjgpfenbmpflcfig).
+  - Installed but inactive (\`active === false\`): Chrome needs to be open and signed in to LinkedIn.
+  - Direct messaging needs extension v1.1.3 or higher; older versions can be updated or reloaded from \`chrome://extensions\`.
 
-### 2. Ad-Hoc Lead Queuing Directly from Search Results
-- When the user searches for leads using \`precept_search_leads\` and expresses intent to connect (e.g. "reach out to these leads", "connect with them", "start a campaign for these people"):
-  - You do **NOT** need to create a pre-saved lead list first.
-  - Simply call \`precept_campaign_queue\` with \`action: "queue"\` and map the search results directly into the \`leads\` array:
-    \`[{ name: lead.name, linkedinUrl: lead.linkedinUrl, company: lead.company, title: lead.title }]\`
-  - Leave \`autoSaveLeadsList: true\` (default). Precept will automatically create and save a new list in their Precept dashboard so their leads remain organized.
+### Acting on the user's behalf
+- Outreach sends real messages and invitations from the user's LinkedIn account, so only queue campaigns or send messages the user has asked for, and confirm the recipients and message text with them first.
 
-### 3. Queue Discipline & FIFO Execution
-- Only one campaign can actively connect at a time to strictly safeguard the user's LinkedIn account reputation and prevent rate limit flags.
-- If a campaign is already executing (\`status: "running"\` or \`"paused"\`), \`precept_campaign_queue\` (\`action: "queue"\`) automatically appends the new campaign to the queue in FIFO order with an incremental \`queuePosition\` (1 = next in line).
-- Inform the user of their campaign's status and position in line.
+### Queuing leads from search results
+- Leads from \`precept_search_leads\` can be queued directly: pass them in the \`leads\` array as \`[{ name, linkedinUrl, company, title }]\`. A saved list isn't required.
+- With \`autoSaveLeadsList: true\` (default), Precept also saves the leads as a list in the user's Precept dashboard.
 
-### 4. Visibility into Current Outreach Queue
-- Use \`precept_campaign_queue\` with \`action: "get_queue"\` to report full queue transparency:
-  - Active campaign name, connection progress (e.g. \`14/50 leads connected\`), and status.
-  - Any active rate limit cool-off countdowns (\`rateLimitPause.remainingMinutes\`).
-  - Conversion metrics (invitations sent, invitations accepted).
-  - Upcoming queued campaigns with their queue positions.
+### Queue behaviour
+- One campaign connects at a time to protect the user's LinkedIn account from rate limits. New campaigns join a first-in, first-out queue with a \`queuePosition\` (1 = next in line).
+- \`action: "get_queue"\` shows the active campaign's progress (e.g. \`14/50 leads connected\`), any rate-limit cool-off (\`rateLimitPause.remainingMinutes\`), invitations sent and accepted, and upcoming campaigns.
+- Controls: \`"pause"\`, \`"resume"\`, \`"archive"\` (or \`"cancel"\`) to move an active or paused campaign to History so the next one can start, and \`"remove"\` to drop an upcoming campaign.
 
-### 5. Managing Queue & Outreach Controls
-- Use \`precept_campaign_queue\` to control execution:
-  - \`action: "pause"\`: Temporarily pause active outreach.
-  - \`action: "resume"\`: Resume a paused campaign.
-  - \`action: "archive"\` (or \`"cancel"\`): Archive an active or paused campaign to History, allowing upcoming queued campaigns to advance.
-  - \`action: "remove"\`: Remove an upcoming campaign from the queue.
-
-### 6. Sending 1-on-1 Direct Messages via LinkedIn
-- **Mandatory Pre-Flight Extension Check & Version Requirement**:
-  - Before calling \`precept_linkedin_messages\` (\`action: "send"\`), the AI assistant **MUST first call \`precept_get_extension_status\`** to verify that the user's Precept Chrome extension is active (\`active === true\`).
-  - **Minimum Version v1.1.3**: Inspect \`extensionVersion\`. Direct messaging requires extension version **1.1.3 or higher**. If \`extensionVersion\` is below 1.1.3 (e.g. \`1.1.1\` or \`1.1.2\`), do NOT call \`precept_linkedin_messages\`; immediately inform the user:
-    > *"Direct messaging requires Precept Chrome extension v1.1.3 or higher. You are currently running v{extensionVersion}. Please update or reload your extension in \`chrome://extensions\` to enable direct messaging."*
-  - If the extension is not active or not installed, do NOT send the message; instruct the user to ensure Google Chrome is open and logged into LinkedIn.
-- **Sending the Message**:
-  - Use \`precept_linkedin_messages\` with \`action: "send"\`, \`recipient: { name, linkedinUrl, company, title }\`, and \`message\`.
-  - Always advise keeping the message concise (under 200 characters) so it cleanly fits as a connection request note if the recipient is not yet connected.
-  - Returns a \`messageId\` and confirms dispatch.
-- **Mandatory Delivery Status Polling (Up to 40 Attempts)**:
-  - Once dispatch returns a \`messageId\`, the AI assistant **MUST continuously check its status using \`precept_linkedin_messages\` with \`action: "get_status"\` and \`messageId\`**.
-  - Poll **up to 40 times** (waiting 3–5 seconds between attempts) as long as status is \`pending\`.
-  - **Success / Completed**: When status becomes \`sent\`, report success and whether it delivered as a direct message or connection note.
-  - **Already Pending**: When status becomes \`already_pending\`, inform the user that an invitation is already pending for this lead.
-  - **Failure / Error**: When status becomes \`failed\`, immediately inform the user with the exact \`error\` details returned by the tool (the extension reports the precise reason, e.g. session expired, profile inaccessible, or LinkedIn rate limit).
-  - **40-Poll Timeout**: If after **40 poll attempts** the message is still \`pending\`, stop polling and inform the user:
-    > *"Delivery is taking longer than usual. The Precept extension is continuing to process this in the background (Message ID: \`...\`). You can check back on the status later."*
+### Direct messages
+- \`precept_linkedin_messages\` with \`action: "send"\`, \`recipient: { name, linkedinUrl, company, title }\` and \`message\` returns a \`messageId\`. If the recipient isn't a 1st-degree connection, the message is sent as a connection note, which LinkedIn limits to about 200 characters.
+- Delivery is asynchronous. \`action: "get_status"\` with the \`messageId\` returns \`pending\` until it becomes \`sent\` (with whether it went as a DM or a connection note), \`already_pending\` (an invitation was already pending), or \`failed\` (with the reason, e.g. session expired, profile inaccessible or LinkedIn rate limit). Delivery usually completes within about 2 minutes, so checking every ~3 seconds for up to about 40 checks works well. If it's still pending after that, the extension keeps trying in the background and the user can check back later with the messageId.
 `;

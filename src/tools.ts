@@ -8,6 +8,9 @@ import { SERVER_VERSION } from "./version.js";
 
 dotenv.config();
 
+// Results returned by search tools when the caller doesn't pass a limit.
+const DEFAULT_RESULT_LIMIT = 30;
+
 const PRECEPT_API_URL =
   process.env.PRECEPT_API_URL || "https://api.preceptai.co.uk";
 
@@ -189,7 +192,7 @@ const enrichmentsSchema = z
       .boolean()
       .optional()
       .describe(
-        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found (1 credit for email per person, 10 for phone per person, or 11 for both per person). IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
+        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found (1 credit for email per person, 10 for phone per person, or 11 for both per person). Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
       ),
     decisionMakersLimit: z
       .number()
@@ -548,10 +551,9 @@ export function registerAllTools(
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
-        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Silently default to returning 30 leads on the first attempt — DO NOT tell the user you are defaulting to 30 and DO NOT ask about volume or contact details upfront. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the lead results in a sheet doc. " +
-        "If you searched only default 30 leads on the first run, in the follow-up AFTER returning results, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 0.1 per lead, more with insights or contact details); precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
+        "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
         query: z
           .string()
@@ -563,7 +565,7 @@ export function registerAllTools(
           .max(1000)
           .optional()
           .describe(
-            "Maximum number of leads to return (max 1000). Default is 30 on initial searches. DO NOT ask the user about volume or lead count upfront.",
+            "Maximum number of leads to return (max 1000). Defaults to 30.",
           ),
         name: z
           .string()
@@ -587,7 +589,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 140+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. IMPORTANT: Do NOT enable unless the user explicitly requested contact details in their prompt. DO NOT ask the user upfront if they want contact details.",
+            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 140+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         signal: z
           .object({
@@ -633,7 +635,7 @@ export function registerAllTools(
         );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/leads/search`,
-          args,
+          { ...args, limit: args.limit ?? DEFAULT_RESULT_LIMIT },
           { headers: getHeaders() },
         );
         console.log(
@@ -657,12 +659,11 @@ export function registerAllTools(
         "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
         "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
-        "CRITICAL TIMEFRAME RULE: Do NOT silently default to 'month'. When a user asks to search posts without specifying a timeframe, the ONLY question you may ask the user upfront is their preferred timeframe: past 24 hours ('24h'), past week ('week'), or past month ('month'). DO NOT mention that you are searching for 30 leads or ask about volume upfront, and DO NOT ask if they want contact details (emails/phones) upfront. Silently default to 30 leads and without contact details. All other questions must come AFTER the first result is returned. " +
-        "CRITICAL KEYWORD GUIDELINES: Keep keywords concise (1 to 3 words or a short phrase, e.g. ['SEO problem', 'struggling with SEO'] or ['AI workflow', 'marketing automation']). Do NOT generate long conversational sentences or filler phrases (e.g. avoid 'looking for a new senior product designer for our fintech startup') as long phrases drastically lower search engine recall. " +
-        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing (+5 credits/lead for post search). Silently default to 30 on the first attempt without asking about count. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress. " +
-        "Upon completion, always try to give users the lead results in a sheet doc. " +
-        "If you searched only default 30 leads on the first run, in the follow-up AFTER returning results, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "Results depend heavily on the timeframe (past 24 hours, week or month), so if the user hasn't said which, it's worth asking. " +
+        "Short keywords of 1 to 3 words (e.g. ['SEO problem', 'struggling with SEO']) match far more posts than long sentences. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 5.1 per lead); precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
+        "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
         keywords: z
           .array(z.string())
@@ -683,8 +684,7 @@ export function registerAllTools(
           .enum(["24h", "day", "week", "month", "year"])
           .optional()
           .describe(
-            "Timeframe of LinkedIn posts to search: '24h' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). 'day' is also accepted for backward compatibility. " +
-              "Do NOT silently default to 'month' if unspecified. ALWAYS ask the user whether they want posts from within the past 24 hours ('24h'), past week ('week'), or past month ('month') before calling this tool, unless they already specified it in their prompt.",
+            "Timeframe of LinkedIn posts to search: '24h' (past 24 hours), 'week' (past week), 'month' (past month), or 'year' (past year). 'day' is also accepted for backward compatibility.",
           ),
         location: z
           .string()
@@ -698,7 +698,7 @@ export function registerAllTools(
           .max(1000)
           .optional()
           .describe(
-            "Maximum number of leads to return (max 1000). Default is 30 on initial searches. DO NOT ask the user about volume or lead count upfront.",
+            "Maximum number of leads to return (max 1000). Defaults to 30.",
           ),
         name: z
           .string()
@@ -722,7 +722,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for discovered authors. Adds +1 credit for email, +10 for phone (or +11 for both) per person. IMPORTANT: Do NOT enable unless the user explicitly requested contact details in their prompt. DO NOT ask the user upfront if they want contact details.",
+            "Whether to find and verify email addresses and phone numbers for discovered authors. Adds +1 credit for email, +10 for phone (or +11 for both) per person. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         webhookUrl: z
           .string()
@@ -753,6 +753,7 @@ export function registerAllTools(
         );
         const payload = {
           ...args,
+          limit: args.limit ?? DEFAULT_RESULT_LIMIT,
           ...(args.timeframe
             ? { timeframe: args.timeframe === "day" ? "24h" : args.timeframe }
             : {}),
@@ -783,9 +784,8 @@ export function registerAllTools(
         "Enrich a list of specific contacts with verified contact details and AI-powered insights. " +
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
-        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the lead results in a sheet doc.",
+        "Uses credits (from 1 per lead, more with contact details); precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so.",
       inputSchema: z.object({
         leads: z
           .array(
@@ -840,7 +840,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email and phone numbers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). If true, results include enrich_email and enrich_phone fields. IMPORTANT: Do NOT enable unless the user explicitly requested contact details.",
+            "Whether to find and verify email and phone numbers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). If true, results include enrich_email and enrich_phone fields. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         translate: z
           .boolean()
@@ -914,9 +914,8 @@ export function registerAllTools(
         "Retrieve detailed insights and enrichments for a list of specific companies. " +
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
-        "IMPORTANT: Always check user credits with precept_check_credits before calling this tool. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the company results in a sheet doc.",
+        "Uses credits (from 1 per company, more per enrichment); precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so.",
       inputSchema: z.object({
         companies: z
           .array(
@@ -999,9 +998,9 @@ export function registerAllTools(
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies in Berlin'. " +
-        "IMPORTANT: Always verify user has sufficient credits with precept_check_credits before executing. Unless the user specifies a count, default to returning 30 on the first attempt and ask if they want more afterwards. " +
-        "This is an async operation — it returns an enrichment_id (jobId) immediately. You MUST continuously poll precept_get_job_status every 4 seconds for up to 150 attempts (~10 minutes) while in progress, providing the user with status updates at least every 15 polls (~1 minute) until completed. " +
-        "Upon completion, always try to give users the company results in a sheet doc.",
+        "Returns 30 companies by default; pass limit for more. Uses credits (from 1 per company, more per enrichment); precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
+        "Results work well as a table.",
       inputSchema: z.object({
         query: z
           .string()
@@ -1013,7 +1012,7 @@ export function registerAllTools(
           .max(1000)
           .optional()
           .describe(
-            "Maximum number of companies to return (max 1000). Unless the user specifies a count, default to 30 on the first attempt and ask if they want more afterwards. Always verify the user has sufficient credits for the volume before executing.",
+            "Maximum number of companies to return (max 1000). Defaults to 30.",
           ),
         name: z
           .string()
@@ -1042,7 +1041,7 @@ export function registerAllTools(
         );
         const response = await axios.post(
           `${PRECEPT_API_URL}/v1/companies/search`,
-          args,
+          { ...args, limit: args.limit ?? DEFAULT_RESULT_LIMIT },
           { headers: getHeaders() },
         );
         console.log(
@@ -1065,11 +1064,9 @@ export function registerAllTools(
       description:
         "Check the status and retrieve results of any Precept enrichment or search job. " +
         "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
-        "MANDATORY POLLING RULE: Continue to poll this tool every 4 seconds for up to 150 attempts (~10 minutes) as long as the job status is in progress ('pending', 'processing', 'in_progress'). You MUST also provide the user with progress updates on what is happening at least every 15 polls (~1 minute) until completed. " +
-        "If the job reaches 150 attempts (~10 minutes) and is still in progress, stop polling and inform the user to check back in a few minutes as it is taking longer than usual. " +
-        "Returns status 'processing' with progress info while running, or 'completed' with the full results when done. " +
-        "When completed, always try to give users the lead or company results in a sheet doc. " +
-        "For lead results, if you searched only default 30 leads on the first run, in the follow-up AFTER returning results, first tell the user that only 30 leads were searched for on this initial run, and then ask if they want to find more (asking them to specify how many more) or if they want to enrich the contacts with phone numbers or email addresses.",
+        "Returns status 'pending', 'processing' or 'in_progress' with progress info while running, 'completed' with the full results, or 'failed' with error details. " +
+        "Jobs can take up to about 10 minutes. Checking every ~4 seconds for up to about 150 checks gives the best experience, with a brief progress update to the user every minute or so. " +
+        "If a job is still running after that, it's usually still working: share the jobId so the user can check back later.",
       inputSchema: z.object({
         jobId: z
           .string()
@@ -1339,13 +1336,12 @@ export function registerAllTools(
         "Send direct LinkedIn messages and check delivery status via the Precept Chrome extension. " +
         "Actions: " +
         "- 'send': Send a direct message or outreach note to an individual lead via the Precept Chrome extension. " +
-        "  MANDATORY PRE-CHECK: Before calling 'send', verify that the extension is active using precept_get_extension_status. " +
+        "  Sending requires the Precept Chrome extension to be active; precept_get_extension_status checks this. " +
         "  If the lead is already a 1st-degree connection, it delivers as a direct message (DM). " +
         "  If not connected, it automatically routes to a connection request with your message as a personalized note (capped at 200 chars). " +
         "- 'get_status': Check the delivery status of a previously dispatched message. " +
-        "MANDATORY POLLING RULE: Once dispatched via 'send', you MUST continuously poll 'get_status' up to 40 times (every 3 seconds) while status is 'pending'. " +
-        "If status becomes 'sent', 'already_pending', or 'failed', present the final outcome (including error details if failed). " +
-        "If still pending after 40 checks, tell the user it is taking longer than usual and they can check back later.",
+        "Delivery is asynchronous: 'get_status' returns 'pending' until the extension reports 'sent', 'already_pending' or 'failed' (with error details). " +
+        "Delivery usually completes within about 2 minutes, so checking every ~3 seconds for up to about 40 checks works well.",
       inputSchema: z.object({
         action: z
           .enum(["send", "get_status"])
