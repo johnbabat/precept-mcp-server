@@ -562,10 +562,13 @@ async function main() {
     // ──────────────────────────────────────────
     // OpenAI Apps Challenge (Domain Verification)
     // ──────────────────────────────────────────
-    app.get("/.well-known/openai-apps-challenge", (req, res) => {
-      const token = process.env.OPENAI_APPS_CHALLENGE_TOKEN || "";
-      res.type("text/plain").send(token);
-    });
+    app.get(
+      ["/.well-known/openai-apps-challenge", "/.well-known/openai-apps"],
+      (req, res) => {
+        const token = process.env.OPENAI_APPS_CHALLENGE_TOKEN || "";
+        res.type("text/plain").send(token);
+      },
+    );
 
     // ──────────────────────────────────────────
     // GET /authorize (Render UI)
