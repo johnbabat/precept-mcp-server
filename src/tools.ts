@@ -623,6 +623,7 @@ export function registerAllTools(
         title: "Search Leads",
         readOnlyHint: false,
         destructiveHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => {
@@ -742,6 +743,7 @@ export function registerAllTools(
         title: "Leads from LinkedIn Posts",
         readOnlyHint: false,
         destructiveHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => {
@@ -878,6 +880,7 @@ export function registerAllTools(
         title: "Enrich Leads",
         readOnlyHint: false,
         destructiveHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => {
@@ -963,6 +966,7 @@ export function registerAllTools(
         title: "Get Company Insights",
         readOnlyHint: false,
         destructiveHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => {
@@ -1028,6 +1032,7 @@ export function registerAllTools(
         title: "Search Companies",
         readOnlyHint: false,
         destructiveHint: false,
+        openWorldHint: true,
       },
     },
     async (args) => {
@@ -1077,6 +1082,7 @@ export function registerAllTools(
         title: "Get Job Status",
         readOnlyHint: true,
         destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async ({ jobId }) => {
@@ -1116,6 +1122,7 @@ export function registerAllTools(
         title: "Check Credit Balance",
         readOnlyHint: true,
         destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => {
@@ -1154,6 +1161,7 @@ export function registerAllTools(
         title: "Check Server Version",
         readOnlyHint: true,
         destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => {
@@ -1189,6 +1197,7 @@ export function registerAllTools(
         title: "Get Extension Status",
         readOnlyHint: true,
         destructiveHint: false,
+        openWorldHint: false,
       },
     },
     async () => {
@@ -1261,6 +1270,7 @@ export function registerAllTools(
         title: "Campaign Queue",
         readOnlyHint: false,
         destructiveHint: true,
+        openWorldHint: true,
       },
     },
     async ({
@@ -1383,7 +1393,8 @@ export function registerAllTools(
       annotations: {
         title: "LinkedIn Messaging",
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
       },
     },
     async ({
@@ -1554,6 +1565,7 @@ export function registerAllTools(
         title: "Job Subscriptions",
         readOnlyHint: false,
         destructiveHint: true,
+        openWorldHint: true,
       },
     },
     async ({
@@ -1808,6 +1820,7 @@ export function registerAllTools(
         title: "Lead Subscriptions",
         readOnlyHint: false,
         destructiveHint: true,
+        openWorldHint: true,
       },
     },
     async ({
