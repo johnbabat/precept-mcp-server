@@ -1112,7 +1112,7 @@ export function registerAllTools(
       title: "Check Credit Balance",
       description:
         "Check the remaining credit balance for your Precept account. " +
-        "Returns the total number of credits currently available for search and enrichment tasks, along with server version status.",
+        "Returns the total number of credits currently available for search and enrichment tasks, along with the running server version.",
       inputSchema: z.object({}),
       outputSchema: checkCreditsOutputSchema,
       annotations: {
@@ -1150,8 +1150,7 @@ export function registerAllTools(
     {
       title: "Check Server Version",
       description:
-        "Check the current running version of the Precept MCP server against the latest published version. " +
-        "Returns whether the server is up to date and provides instructions to refresh the connector if an update is available.",
+        "Returns the version of the Precept MCP server that is currently running.",
       inputSchema: z.object({}),
       outputSchema: checkVersionOutputSchema,
       annotations: {

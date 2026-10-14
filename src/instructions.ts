@@ -1,5 +1,3 @@
-import { SERVER_VERSION } from "./version.js";
-
 /**
  * System instructions for the Precept MCP Server.
  * These instructions guide AI assistants on workflow rules, credit estimation,
@@ -35,9 +33,8 @@ This is reference information about how Precept's tools work and what they cost.
 - If a job is still running after that, it is usually still working: share the jobId so the user can check back later. If it fails, share the jobId and error details.
 - Lead and company results read well as a table (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone for leads; Company Name, Website, Industry, Employee Count, Location for companies).
 
-### Server version
-- These instructions are for Precept MCP **v\${SERVER_VERSION}**. \`precept_check_credits\` and \`precept_check_version\` return the running \`serverVersion\`. If it is newer, the user can refresh their connection to get the latest tools: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools).
-- An \`InvalidParams\` or input/output validation error (e.g. MCP error -32602) usually means the client's cached tool schemas are out of date. Refreshing the connection fixes it; see the same guide.
+### Out-of-date tool definitions
+- An \`InvalidParams\` or input/output validation error (e.g. MCP error -32602) usually means the client's cached tool definitions are out of date. Refreshing the connection fixes it: [Precept MCP Update Guide](https://www.preceptai.co.uk/mcp#update-tools).
 
 ### Departments, role limits & conceptual mapping
 - **Fixed List of 40 Canonical Departments**:
