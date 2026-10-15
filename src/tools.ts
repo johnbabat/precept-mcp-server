@@ -658,7 +658,8 @@ export function registerAllTools(
       description:
         "Discover business leads and contacts directly from authors who recently published LinkedIn posts matching specific keywords. " +
         "Unlike precept_search_leads (which searches by persona query), this tool discovers leads directly from content authors without requiring a persona query. " +
-        "Each discovered lead includes their verified profile and the specific LinkedIn post they authored. " +
+        "Each result is one post author (a lead), not a raw post: full_name, first_name, last_name, job_title, company_name, company_domain, linkedin, user_name, location, country, connections_count, followers, enrich_email / enrich_phone ('Not Found' unless includeContactDetails), plus a post object with url, content (truncated to 2000 characters), posted_at, likes_count and comments_count. findInsights adds summary, top_problems, internal_strategic_initiatives and public_appearances. " +
+        "Results come back in relevance order by default; pass sortBy 'likes' or 'comments' to get the most-engaged posts instead (Precept selects the top posts by that metric from a larger candidate pool, then returns them in descending order). " +
         "Results depend heavily on the timeframe (past 24 hours, week or month), so if the user hasn't said which, it's worth asking. " +
         "Short keywords of 1 to 3 words (e.g. ['SEO problem', 'struggling with SEO']) match far more posts than long sentences. " +
         "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 5.1 per lead); precept_check_credits shows the balance. " +
@@ -692,6 +693,12 @@ export function registerAllTools(
           .describe(
             "Optional target location/country to filter post authors by (e.g. 'United States', 'US', 'UK', 'Canada'). " +
               "Filters authors by verified profile location/country in real-time.",
+          ),
+        sortBy: z
+          .enum(["relevance", "likes", "comments"])
+          .optional()
+          .describe(
+            "How to rank posts: 'relevance' (default), 'likes' (most-liked posts first) or 'comments' (most-commented posts first). Sorting by likes/comments picks the top posts by that metric from a larger candidate pool, so it changes which leads are returned, not just their order. No extra cost.",
           ),
         limit: z
           .number()
@@ -749,7 +756,7 @@ export function registerAllTools(
     async (args) => {
       try {
         console.log(
-          `[Tool] precept_get_leads_from_post_search starting... keywords=${JSON.stringify(args.keywords)}, limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`,
+          `[Tool] precept_get_leads_from_post_search starting... keywords=${JSON.stringify(args.keywords)}, sortBy=${args.sortBy || "relevance"}, limit=${args.limit || "default"}, contactDetails=${!!args.includeContactDetails}`,
         );
         const payload = {
           ...args,

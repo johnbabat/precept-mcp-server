@@ -125,6 +125,8 @@ This is reference information about how Precept's tools work and what they cost.
 - **Timeframe**: results depend heavily on the timeframe (\`24h\`, \`week\` or \`month\`). If the user hasn't specified one, it's worth asking.
 - **Keywords**: short keywords of 1 to 3 words (e.g. \`['SEO problem', 'struggling with SEO']\` or \`['AI workflow', 'marketing automation']\`) match far more posts than long conversational sentences (e.g. \`'looking for a new senior product designer for our fintech startup'\`).
 - **Description**: a clear \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
+- **Sorting**: \`sortBy\` is \`relevance\` (default), \`likes\` or \`comments\`. Use \`likes\`/\`comments\` when the user wants the most popular or most-discussed posts; Precept picks the top posts by that metric from a larger candidate pool and returns them in descending order. No extra cost.
+- **Returned data**: each result is a post author (lead) with profile fields (name, job title, company, domain, LinkedIn URL, location, country, connections, followers, \`enrich_email\`/\`enrich_phone\`) and a \`post\` object (\`url\`, \`content\` truncated to 2000 characters, \`posted_at\`, \`likes_count\`, \`comments_count\`). \`findInsights\` adds summary, top problems, strategic initiatives and public appearances.
 - **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
 - **Post Search Activity Signal**: \`+5.0 credits / lead\`
