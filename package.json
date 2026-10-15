@@ -13,10 +13,11 @@
     "README.md"
   ],
   "scripts": {
+    "prebuild": "node scripts/sync-server-version.js",
     "build": "tsc",
     "start": "node build/index.js",
     "version": "node scripts/sync-server-version.js && git add server.json",
-    "prepublishOnly": "node scripts/sync-server-version.js --check"
+    "prepublishOnly": "npm run build"
   },
   "author": "Precept AI",
   "license": "MIT",
