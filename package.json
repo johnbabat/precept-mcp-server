@@ -14,7 +14,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js"
+    "start": "node build/index.js",
+    "version": "node scripts/sync-server-version.js && git add server.json",
+    "prepublishOnly": "node scripts/sync-server-version.js --check"
   },
   "author": "Precept AI",
   "license": "MIT",
