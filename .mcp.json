@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "precept": {
+      "command": "npx",
+      "args": ["-y", "@preceptai/mcp-server"],
+      "env": {
+        "PRECEPT_API_KEY": "${env:PRECEPT_API_KEY}"
+      }
+    }
+  }
+}
