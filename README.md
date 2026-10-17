@@ -214,6 +214,7 @@ The endpoint will be available at `http://your-domain.com:3000/mcp` with full OA
 | `ALLOWED_REDIRECT_DOMAINS` | `http` | *(see source)* | Comma-separated domains allowed as OAuth `redirect_uri` targets (e.g. Claude and ChatGPT callback domains). |
 | `REDIS_URL` | `http` | *(optional)* | Redis connection string for persistent distributed auth code storage. Defaults to in-memory store. |
 | `PRECEPT_API_URL` | Both | `https://api.preceptai.co.uk` | Core Precept API endpoint. |
+| `WEB_APP_URL` | `http` | `https://app.preceptai.co.uk` | Precept web app that handles sign-in/sign-up during OAuth and mints the connector API key. |
 
 ---
 

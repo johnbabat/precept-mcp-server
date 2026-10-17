@@ -153,13 +153,26 @@ export interface AuthCodeData {
   redirectUri: string;
 }
 
+// An /authorize request parked while the user signs in on the Precept web app
+export interface PendingAuthData {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  codeChallenge: string;
+  codeChallengeMethod: string;
+}
+
 export interface ITokenStore {
   setAuthCode(code: string, data: AuthCodeData, ttlSeconds: number): Promise<void>;
   getAndRemoveAuthCode(code: string): Promise<AuthCodeData | null>;
+  setPendingAuth(id: string, data: PendingAuthData, ttlSeconds: number): Promise<void>;
+  getPendingAuth(id: string): Promise<PendingAuthData | null>;
+  getAndRemovePendingAuth(id: string): Promise<PendingAuthData | null>;
 }
 
 export class MemoryTokenStore implements ITokenStore {
   private store = new Map<string, { data: AuthCodeData; expiresAt: number }>();
+  private pendingStore = new Map<string, { data: PendingAuthData; expiresAt: number }>();
   private cleanupTimer: ReturnType<typeof setInterval>;
 
   constructor() {
@@ -178,6 +191,11 @@ export class MemoryTokenStore implements ITokenStore {
         this.store.delete(code);
       }
     }
+    for (const [id, entry] of this.pendingStore) {
+      if (now > entry.expiresAt) {
+        this.pendingStore.delete(id);
+      }
+    }
   }
 
   async setAuthCode(code: string, data: AuthCodeData, ttlSeconds: number): Promise<void> {
@@ -193,6 +211,22 @@ export class MemoryTokenStore implements ITokenStore {
       return null;
     }
     return entry.data;
+  }
+
+  async setPendingAuth(id: string, data: PendingAuthData, ttlSeconds: number): Promise<void> {
+    this.pendingStore.set(id, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+  }
+
+  async getPendingAuth(id: string): Promise<PendingAuthData | null> {
+    const entry = this.pendingStore.get(id);
+    if (!entry || Date.now() > entry.expiresAt) return null;
+    return entry.data;
+  }
+
+  async getAndRemovePendingAuth(id: string): Promise<PendingAuthData | null> {
+    const data = await this.getPendingAuth(id);
+    this.pendingStore.delete(id);
+    return data;
   }
 }
 
@@ -220,11 +254,34 @@ export class RedisTokenStore implements ITokenStore {
   }
 
   async getAndRemoveAuthCode(code: string): Promise<AuthCodeData | null> {
+    return this.getAndDelete<AuthCodeData>(`auth_code:${code}`);
+  }
+
+  async setPendingAuth(id: string, data: PendingAuthData, ttlSeconds: number): Promise<void> {
     await this.ready;
-    const key = `auth_code:${code}`;
+    await this.redis.set(`pending_auth:${id}`, JSON.stringify(data), "EX", ttlSeconds);
+  }
+
+  async getPendingAuth(id: string): Promise<PendingAuthData | null> {
+    await this.ready;
+    const dataStr: string | null = await this.redis.get(`pending_auth:${id}`);
+    if (!dataStr) return null;
+    try {
+      return JSON.parse(dataStr) as PendingAuthData;
+    } catch {
+      return null;
+    }
+  }
+
+  async getAndRemovePendingAuth(id: string): Promise<PendingAuthData | null> {
+    return this.getAndDelete<PendingAuthData>(`pending_auth:${id}`);
+  }
+
+  private async getAndDelete<T>(key: string): Promise<T | null> {
+    await this.ready;
 
     // Atomic get-and-delete via Lua script to prevent race conditions
-    // where the same auth code could be exchanged twice
+    // where the same code could be used twice
     const lua = `
       local val = redis.call('GET', KEYS[1])
       if val then
@@ -236,7 +293,7 @@ export class RedisTokenStore implements ITokenStore {
     if (!dataStr) return null;
 
     try {
-      return JSON.parse(dataStr) as AuthCodeData;
+      return JSON.parse(dataStr) as T;
     } catch {
       return null;
     }

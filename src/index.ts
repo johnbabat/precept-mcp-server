@@ -21,6 +21,7 @@ import {
   escapeHtml,
   generateCsrfToken,
   verifyCsrfToken,
+  ITokenStore,
 } from "./auth.js";
 
 dotenv.config();
@@ -469,6 +470,90 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
   }
 }
 
+// Precept web app that handles sign-in / sign-up for the OAuth flow
+const WEB_APP_URL = (
+  process.env.WEB_APP_URL || "https://app.preceptai.co.uk"
+).replace(/\/$/, "");
+
+// How long a user has to sign in or sign up on the web app (incl. org setup)
+const PENDING_AUTH_TTL = 30 * 60; // 30 minutes
+
+// Display name for the connecting client, shown on the web app's connect page
+function getClientLabel(redirectUri: string): string {
+  try {
+    const hostname = new URL(redirectUri).hostname.toLowerCase();
+    const matches = (domain: string) =>
+      hostname === domain || hostname.endsWith(`.${domain}`);
+    if (matches("claude.ai") || matches("claude.com")) return "Claude";
+    if (matches("chatgpt.com") || matches("openai.com")) return "ChatGPT";
+  } catch {
+    // fall through
+  }
+  return "your AI assistant";
+}
+
+function renderMessageHtml(title: string, message: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precept</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; padding: 16px; box-sizing: border-box; }
+    .card { max-width: 420px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px; text-align: center; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    p { font-size: 14px; line-height: 1.6; color: #475569; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(message)}</p>
+  </div>
+</body>
+</html>`;
+}
+
+const EXPIRED_REQUEST_MESSAGE =
+  "This connection request has expired or was already used. Please start connecting Precept again from your AI assistant.";
+
+// Issue a short-lived auth code for a validated API key and redirect back to the client.
+// redirectUri must already be validated against the allowlist.
+async function issueAuthCodeAndRedirect(
+  res: express.Response,
+  tokenStore: ITokenStore,
+  jwtSecret: string,
+  params: {
+    apiKey: string;
+    clientId: string;
+    redirectUri: string;
+    state: string;
+    codeChallenge: string;
+  },
+) {
+  const authCode = crypto.randomBytes(24).toString("hex");
+
+  // Encrypt the API key before storing (so it's never plaintext in Redis/memory)
+  const encryptedApiKey = encrypt(params.apiKey, jwtSecret);
+
+  await tokenStore.setAuthCode(
+    authCode,
+    {
+      encryptedApiKey,
+      codeChallenge: params.codeChallenge,
+      clientId: params.clientId,
+      redirectUri: params.redirectUri,
+    },
+    300, // 5 minutes TTL
+  );
+
+  const safeRedirectUri = new URL(params.redirectUri);
+  safeRedirectUri.searchParams.set("code", authCode);
+  safeRedirectUri.searchParams.set("state", params.state);
+  res.redirect(safeRedirectUri.toString());
+}
+
 async function main() {
   if (transportType === "http") {
     const app = express();
@@ -573,7 +658,7 @@ async function main() {
     // ──────────────────────────────────────────
     // GET /authorize (Render UI)
     // ──────────────────────────────────────────
-    app.get("/authorize", (req, res) => {
+    app.get("/authorize", async (req, res) => {
       const {
         client_id,
         redirect_uri,
@@ -620,19 +705,111 @@ async function main() {
         return;
       }
 
-      // Generate a CSRF token for the form submission
-      const csrfToken = generateCsrfToken(jwtSecret);
+      // Park the request and send the user to the web app to sign in or sign up.
+      // The web app mints a connector API key and posts it to /authorize/complete.
+      const requestId = crypto.randomBytes(24).toString("hex");
+      await tokenStore.setPendingAuth(
+        requestId,
+        {
+          clientId: String(client_id),
+          redirectUri: redirectUriStr,
+          state: String(state),
+          codeChallenge: String(code_challenge),
+          codeChallengeMethod: String(code_challenge_method || "S256"),
+        },
+        PENDING_AUTH_TTL,
+      );
+
+      const connectUrl = new URL(`${WEB_APP_URL}/connect/mcp`);
+      connectUrl.searchParams.set("request", requestId);
+      connectUrl.searchParams.set("client", getClientLabel(redirectUriStr));
+      res.redirect(connectUrl.toString());
+    });
+
+    // ──────────────────────────────────────────
+    // GET /authorize/key (Fallback: paste an existing API key)
+    // ──────────────────────────────────────────
+    app.get("/authorize/key", async (req, res) => {
+      const requestId = String(req.query.request || "");
+      const pending = requestId
+        ? await tokenStore.getPendingAuth(requestId)
+        : null;
+      if (!pending) {
+        res
+          .status(400)
+          .send(renderMessageHtml("Link expired", EXPIRED_REQUEST_MESSAGE));
+        return;
+      }
 
       res.send(
         renderAuthorizeHtml({
-          client_id: String(client_id),
-          redirect_uri: redirectUriStr,
-          state: String(state),
-          code_challenge: String(code_challenge),
-          code_challenge_method: String(code_challenge_method || "S256"),
-          csrf_token: csrfToken,
+          client_id: pending.clientId,
+          redirect_uri: pending.redirectUri,
+          state: pending.state,
+          code_challenge: pending.codeChallenge,
+          code_challenge_method: pending.codeChallengeMethod,
+          csrf_token: generateCsrfToken(jwtSecret),
         }),
       );
+    });
+
+    // ──────────────────────────────────────────
+    // POST /authorize/complete (Web app hands back a connector API key)
+    // ──────────────────────────────────────────
+    app.post("/authorize/complete", async (req, res) => {
+      const { request_id, api_key } = req.body;
+
+      if (!request_id || !api_key) {
+        res.status(400).send("Bad Request: Missing request_id or api_key");
+        return;
+      }
+
+      // The request id is an unguessable, single-use nonce bound to the stored
+      // OAuth parameters, so it doubles as the CSRF token for this POST.
+      const pending = await tokenStore.getPendingAuth(String(request_id));
+      if (!pending) {
+        console.warn("[OAuth /authorize/complete] Unknown or expired request_id");
+        res
+          .status(400)
+          .send(renderMessageHtml("Link expired", EXPIRED_REQUEST_MESSAGE));
+        return;
+      }
+
+      const isValid = await validateApiKey(String(api_key));
+      if (!isValid) {
+        console.warn("[OAuth /authorize/complete] Precept API Key validation failed");
+        res
+          .status(400)
+          .send(
+            renderMessageHtml(
+              "Could not connect",
+              "We couldn't verify your Precept API key. Please go back and try connecting again.",
+            ),
+          );
+        return;
+      }
+
+      // Consume the request atomically so it can only complete once
+      const consumed = await tokenStore.getAndRemovePendingAuth(
+        String(request_id),
+      );
+      if (!consumed || !isRedirectUriAllowed(consumed.redirectUri)) {
+        res
+          .status(400)
+          .send(renderMessageHtml("Link expired", EXPIRED_REQUEST_MESSAGE));
+        return;
+      }
+
+      console.log(
+        `[OAuth /authorize/complete] Issuing auth code. client_id=${consumed.clientId}`,
+      );
+      await issueAuthCodeAndRedirect(res, tokenStore, jwtSecret, {
+        apiKey: String(api_key),
+        clientId: consumed.clientId,
+        redirectUri: consumed.redirectUri,
+        state: consumed.state,
+        codeChallenge: consumed.codeChallenge,
+      });
     });
 
     // ──────────────────────────────────────────
@@ -697,31 +874,14 @@ async function main() {
       }
 
       console.log("[OAuth /authorize POST] Precept API Key is valid. Issuing auth code.");
-      // Generate a temporary auth code (short-lived)
-      const authCode = crypto.randomBytes(24).toString("hex");
-
-
-      // Encrypt the API key before storing (so it's never plaintext in Redis/memory)
-      const encryptedApiKey = encrypt(apiKey, jwtSecret);
-
-      // Save credentials state in Redis or Memory
-      await tokenStore.setAuthCode(
-        authCode,
-        {
-          encryptedApiKey,
-          codeChallenge: code_challenge,
-          clientId: client_id,
-          redirectUri: redirect_uri,
-        },
-        300, // 5 minutes TTL
-      );
-
-      // Redirect the user back to the client callback URL
       // Note: redirect_uri has already been validated against the allowlist above
-      const safeRedirectUri = new URL(redirect_uri);
-      safeRedirectUri.searchParams.set("code", authCode);
-      safeRedirectUri.searchParams.set("state", state);
-      res.redirect(safeRedirectUri.toString());
+      await issueAuthCodeAndRedirect(res, tokenStore, jwtSecret, {
+        apiKey,
+        clientId: client_id,
+        redirectUri: redirect_uri,
+        state,
+        codeChallenge: code_challenge,
+      });
     });
 
     app.post("/token", async (req, res) => {
