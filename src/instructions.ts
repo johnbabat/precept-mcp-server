@@ -131,14 +131,14 @@ This is reference information about how Precept's tools work and what they cost.
 - **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
 - **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
-- **Post activity**: \`+0.5 credits / lead\` (so a post search lead costs 1.0 credits before insights or contact details)
+- **Post returned with each lead**: \`+0.2 credits / lead\` (so a post search lead costs 0.7 credits before insights or contact details)
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
   - Phones only: \`+10 credits / lead\`
   - Default / Both: \`+11 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 0.5 + contactCost (0, 1, 10, or 11)
+  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 0.2 + contactCost (0, 1, 10, or 11)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
