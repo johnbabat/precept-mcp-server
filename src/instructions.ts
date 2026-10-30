@@ -28,7 +28,7 @@ This is reference information about how Precept's tools work and what they cost.
 - \`precept_get_leads_from_post_search\` results depend heavily on the timeframe (past 24 hours, week or month). If the user hasn't specified one, it's worth asking.
 
 ### Asynchronous jobs
-- \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_enrich_leads\`, \`precept_search_companies\` and \`precept_get_company_insights\` run asynchronously and return an \`enrichment_id\` (jobId).
+- \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_get_post_engagers\`, \`precept_enrich_leads\`, \`precept_search_companies\` and \`precept_get_company_insights\` run asynchronously and return an \`enrichment_id\` (jobId).
 - Use \`precept_get_job_status\` to check progress. Jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks gives the best experience. A short progress update to the user every minute or so (using \`progress.completed\` / \`progress.total\` when available) keeps them informed.
 - If a job is still running after that, it is usually still working: share the jobId so the user can check back later. If it fails, share the jobId and error details.
 - Lead and company results read well as a table (e.g. Name, Job Title, Company, LinkedIn URL, Location, Email, Phone for leads; Company Name, Website, Industry, Employee Count, Location for companies).
@@ -107,8 +107,9 @@ This is reference information about how Precept's tools work and what they cost.
 
 ### 1. Lead Search (\`precept_search_leads\`)
 - Searches contacts using natural language persona queries (e.g. titles, industries, locations).
-- **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
+- **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
+- **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
@@ -116,7 +117,7 @@ This is reference information about how Precept's tools work and what they cost.
 - **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+5 credits / lead\` (finds people matching your query who recently engaged with post topics)
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.1 or 1.1) + contactCost (0, 1, 10, or 11) + signalCost (0 or 5)
+  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
@@ -127,8 +128,9 @@ This is reference information about how Precept's tools work and what they cost.
 - **Description**: a clear \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
 - **Sorting**: \`sortBy\` is \`relevance\` (default), \`likes\` or \`comments\`. Use \`likes\`/\`comments\` when the user wants the most popular or most-discussed posts; Precept picks the top posts by that metric from a larger candidate pool and returns them in descending order. No extra cost.
 - **Returned data**: each result is a post author (lead) with profile fields (name, job title, company, domain, LinkedIn URL, location, country, connections, followers, \`enrich_email\`/\`enrich_phone\`) and a \`post\` object (\`url\`, \`content\` truncated to 2000 characters, \`posted_at\`, \`likes_count\`, \`comments_count\`). \`findInsights\` adds summary, top problems, strategic initiatives and public appearances.
-- **Base Search**: \`0.1 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.1 credits / lead\`
+- **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
+- **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
 - **Post Search Activity Signal**: \`+5.0 credits / lead\`
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
@@ -136,11 +138,22 @@ This is reference information about how Precept's tools work and what they cost.
   - Default / Both: \`+11 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.1 or 1.1) + 5.0 + contactCost (0, 1, 10, or 11)
+  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 5.0 + contactCost (0, 1, 10, or 11)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
-### 3. Lead Enrichment (\`precept_enrich_leads\`)
+### 3. Post Commenters & Reactors (\`precept_get_post_engagers\`)
+- Returns the people who commented on and/or reacted to one specific LinkedIn post, given its URL (or lnkd.in link, activity URN or post ID). Use it when the user already has a post; use \`precept_get_leads_from_post_search\` to find posts by topic.
+- **Returned data**: one row per person with \`full_name\`, \`headline\`, \`linkedin\`, \`user_name\`, \`profile_picture\`, \`profile_type\`, \`engagement_types\` (\`reaction\`, \`comment\` or both), \`reaction_type\` (e.g. \`LIKE\`, \`PRAISE\`), \`comment_text\`, \`commented_at\`, \`comment_reply_count\` and \`is_comment_reply\`, plus \`summary\` counts and \`cost.credits\`. Commenters come first, then reactors. LinkedIn doesn't expose reaction times, so only comments have a timestamp.
+- **Base**: \`0.5 credits / person returned\` (same base rate as Lead Search). Only people actually returned are charged, and automatic credit capping applies.
+- **Formula**:
+  \`\`\`
+  Total Estimated Credits = 0.5 * limit (maximum; actual = 0.5 * people returned)
+  \`\`\`
+- **Limits**: 100 people by default, up to 1000. \`includeCommentReplies\` adds people who replied to comments.
+- Follow-ups: \`precept_enrich_leads\` for emails, phones and insights (pass the \`linkedin\` URLs), \`precept_linkedin_messages\` or \`precept_campaign_queue\` for outreach.
+
+### 4. Lead Enrichment (\`precept_enrich_leads\`)
 - **Base AI Insights**: \`1.0 credit / lead\`
 - **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
   - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
@@ -156,17 +169,17 @@ This is reference information about how Precept's tools work and what they cost.
   Total Estimated Credits = Cost per lead * leadsCount
   \`\`\`
 
-### 4. Company Search (\`precept_search_companies\`)
-- **Base Search**: \`1.0 credit / company\`
+### 5. Company Search (\`precept_search_companies\`)
+- **Base Search**: \`0.5 credits / company\`
 - **Custom AI Queries (\`queries: [...]\`)**: \`+0.2 credits / company\` (for the entire queries array)
 - **Enrichments**:
   - **Decision Makers (\`type: "decision_makers"\`)**:
     - Without contact details: \`0.5 credits / lead\`
-    - With contact details (\`includeContactDetails: true\`): \`11.1 credits / lead\` (0.1 base + 1 email + 10 phone)
+    - With contact details (\`includeContactDetails: true\`): up to \`11.2 credits / lead\` (0.2 base + 1 email + 10 phone). Only decision makers with a found email or phone get the 0.2 base; the rest cost 0.5, and emails/phones are only charged when found.
     - Leads count calculation:
       - Default (\`limitType: "overall"\`): \`decisionMakersLimit\` (default 5) leads per company.
       - If \`limitType: "per_role"\`: \`(departments.length + jobTitles.length) * decisionMakersLimit\` leads per company.
-  - **All Employees (\`type: "all_employees"\`)**: \`0.5 credits / lead\` (or \`11.1 credits / lead\` if \`includeContactDetails: true\`)
+  - **All Employees (\`type: "all_employees"\`)**: \`0.5 credits / lead\`
   - **Department & Role Insights**:
     - \`employee_count\`: \`2.0 credits / role / company\`
     - \`department_ratio\`: \`4.0 credits / role / company\`
@@ -178,18 +191,18 @@ This is reference information about how Precept's tools work and what they cost.
     - \`recent_funding\`: \`5.0 credits / company\`
 - **Formula**:
   \`\`\`
-  Total Estimated Credits = (1.0 base + queryCost + enrichmentCost) * limit
+  Total Estimated Credits = (0.5 base + queryCost + enrichmentCost) * limit
   \`\`\`
 
-### 5. Company Insights (\`precept_get_company_insights\`)
-- **Base Insights**: \`1.0 credit / company\`
+### 6. Company Insights (\`precept_get_company_insights\`)
+- **Base Insights**: \`0.5 credits / company\`
 - **Custom Queries & Enrichments**: Same rates as Company Search above.
 - **Formula**:
   \`\`\`
-  Total Estimated Credits = (1.0 base + queryCost + enrichmentCost) * companiesCount
+  Total Estimated Credits = (0.5 base + queryCost + enrichmentCost) * companiesCount
   \`\`\`
 
-### 6. Job Posting Subscriptions (\`precept_job_posting_subscriptions\`)
+### 7. Job Posting Subscriptions (\`precept_job_posting_subscriptions\`)
 - Supports two subscription modes on a recurring cadence (7 to 30 days):
   1. **Query-Driven Mode (\`query: string\`)**: Provide a natural language search query string describing target jobs, industries, employee size, and countries (e.g. *"active marketing or sales jobs posted by companies with 20-1000 employees in fmcg in the US"*). Precept automatically analyzes the query using AI (GPT-5.5) and generates the search filters and Elasticsearch DSL query, same as company and lead search. In this mode, do NOT provide \`companies\`, \`departments\`, or \`jobTitles\`.
   2. **Company List Mode (\`companies: array\`)**: Explicitly monitors up to 100 target companies and optional \`departments\` (max 5) or \`jobTitles\` (max 10).
@@ -213,7 +226,7 @@ This is reference information about how Precept's tools work and what they cost.
   - \`runImmediately\`: defaults to \`true\` to execute the initial run right away.
   - \`precept_check_credits\` shows whether the user has enough credits before creating a subscription.
 
-### 7. Lead Signal Subscriptions (\`precept_lead_subscriptions\`)
+### 8. Lead Signal Subscriptions (\`precept_lead_subscriptions\`)
 - Monitors specific target people/leads by their LinkedIn URLs for:
   1. **Job Changes**: Switching employers or companies.
   2. **Role Title Changes**: Internal promotions or title switches.

@@ -23,7 +23,7 @@ All heavy data operations are **non-blocking and asynchronous**: jobs immediatel
 
 ## Available Tools
 
-Precept MCP Server exposes **13 specialized tools** organized across lead discovery, account intelligence, signal subscriptions, outreach automation, and system utilities:
+Precept MCP Server exposes **14 specialized tools** organized across lead discovery, account intelligence, signal subscriptions, outreach automation, and system utilities:
 
 ### 1. Lead & Contact Discovery
 
@@ -31,6 +31,7 @@ Precept MCP Server exposes **13 specialized tools** organized across lead discov
 | :--- | :--- |
 | `precept_search_leads` | Search and discover business leads using natural language queries (e.g. *"Marketing heads at SaaS companies in California with 50-200 employees"*). Supports optional waterfall contact enrichment (verified emails and direct dials) and AI-generated prospect profiles. |
 | `precept_get_leads_from_post_search` | Discover high-intent prospects actively engaging (posting, commenting, reacting) with specific topics on LinkedIn over the past 24 hours, week, or month. |
+| `precept_get_post_engagers` | Get everyone who commented on or reacted to a specific LinkedIn post from its URL, with their reaction type, comment text and comment time. 0.5 credits per person returned. |
 | `precept_enrich_leads` | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Delivers verified emails, phone numbers, professional summary, top problems, and strategic initiatives. |
 
 ### 2. Company & Account Intelligence
@@ -224,13 +225,13 @@ Precept API uses a credit-based model for data operations:
 
 | Operation | Cost |
 | :--- | :--- |
-| **Lead Search** (basic profile) | `0.1 credits` / lead |
-| **Lead Search with AI Insights** | `1.1 credits` / lead |
+| **Lead Search** (basic profile) | `0.5 credits` / lead (`0.2` when an email or phone is found) |
+| **Lead Search with AI Insights** | `1.5 credits` / lead |
 | **Lead Enrichment** (existing contact) | `1.0 credit` / lead |
 | **Verified Work Email** | `+1.0 credit` / lead |
 | **Verified Direct Phone Number** | `+10.0 credits` / lead |
 | **Both Email & Phone** | `+11.0 credits` / lead |
-| **Company Search / Base Insights** | `1.0 credit` / company |
+| **Company Search / Base Insights** | `0.5 credits` / company |
 | **Custom AI Company Query** | `+0.2 credits` / query / company |
 | **Company Decision Makers** | `0.5 credits` / person |
 | **Company Tech Stack** | `2.0 credits` / company |

@@ -551,7 +551,7 @@ export function registerAllTools(
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
-        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 0.1 per lead, more with insights or contact details); precept_check_credits shows the balance. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 0.5 per lead, more with insights or contact details); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
@@ -583,7 +583,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.1 credits per lead if true, 0.1 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.5 credits per lead if true, 0.5 credits if false. Default: false.",
           ),
         includeContactDetails: z
           .boolean()
@@ -662,7 +662,7 @@ export function registerAllTools(
         "Results come back in relevance order by default; pass sortBy 'likes' or 'comments' to get the most-engaged posts instead (Precept selects the top posts by that metric from a larger candidate pool, then returns them in descending order). " +
         "Results depend heavily on the timeframe (past 24 hours, week or month), so if the user hasn't said which, it's worth asking. " +
         "Short keywords of 1 to 3 words (e.g. ['SEO problem', 'struggling with SEO']) match far more posts than long sentences. " +
-        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 5.1 per lead); precept_check_credits shows the balance. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 5.5 per lead); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
@@ -723,7 +723,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.1 credits per lead if true, 0.1 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.5 credits per lead if true, 0.5 credits if false. Default: false.",
           ),
         includeContactDetails: z
           .boolean()
@@ -776,6 +776,83 @@ export function registerAllTools(
         return formatResponse(response.data);
       } catch (error) {
         return formatError(error, "getting leads from post search");
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────
+  // 1c. precept_get_post_engagers
+  // ──────────────────────────────────────────
+  server.registerTool(
+    "precept_get_post_engagers",
+    {
+      title: "Post Commenters & Reactors",
+      description:
+        "Find the people who commented on and/or reacted to (liked, celebrated, etc.) a specific LinkedIn post, from its URL. " +
+        "Use this when the user already has a post in mind; to discover posts by topic, use precept_get_leads_from_post_search instead. " +
+        "Each result is one person, with their reaction and comment merged into one row: full_name, headline, linkedin (profile URL), user_name, profile_picture, profile_type ('individual' or 'organization'), engagement_types (['reaction'], ['comment'] or both), reaction_type (LinkedIn's names: LIKE = Like, PRAISE = Celebrate, APPRECIATION = Support, EMPATHY = Love, INTEREST = Insightful, ENTERTAINMENT = Funny; null if they only commented), comment_text, commented_at (ISO timestamp), comment_reply_count and is_comment_reply (comment fields are null for people who only reacted; LinkedIn doesn't expose when a reaction was made). " +
+        "Commenters are listed first, then reactors. People who only reacted often have an ID-style profile URL (linkedin.com/in/ACoAA...) instead of a public username; it still opens their profile. " +
+        "The completed job also includes summary counts (total_engagers, reactors, commenters) and the credits charged. " +
+        "Returns up to 100 people by default; pass limit for more (max 1000). Uses 0.5 credits per person returned (the same base rate as precept_search_leads); if the balance covers fewer people than the limit, fewer are returned. precept_check_credits shows the balance. " +
+        "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; these jobs usually finish within a minute, so checking every ~4 seconds works well. " +
+        "Results work well as a table (Name, Headline, Engagement, Reaction, Comment, Commented At, LinkedIn). Users often follow up by enriching people with precept_enrich_leads, messaging them with precept_linkedin_messages, or queuing them into a campaign with precept_campaign_queue.",
+      inputSchema: z.object({
+        postUrl: z
+          .string()
+          .describe(
+            "The LinkedIn post to read engagement from: a post URL (e.g. https://www.linkedin.com/posts/... or https://www.linkedin.com/feed/update/urn:li:activity:...), an lnkd.in short link, an activity URN (urn:li:activity:...) or a post ID.",
+          ),
+        engagementTypes: z
+          .array(z.enum(["reactions", "comments"]))
+          .min(1)
+          .optional()
+          .describe(
+            "Which engagers to collect: 'reactions' (likes and other reactions) and/or 'comments'. Default: both.",
+          ),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe(
+            "Maximum number of people to return (max 1000). Defaults to 100. Commenters fill the limit first, then reactors.",
+          ),
+        includeCommentReplies: z
+          .boolean()
+          .optional()
+          .describe(
+            "Also include people who replied to other comments (is_comment_reply is true for them). Default: false.",
+          ),
+        name: z
+          .string()
+          .optional()
+          .describe("A readable name for this job."),
+      }),
+      outputSchema: asyncJobInitOutputSchema,
+      annotations: {
+        title: "Post Commenters & Reactors",
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      try {
+        console.log(
+          `[Tool] precept_get_post_engagers starting... postUrl="${args.postUrl}", engagementTypes=${JSON.stringify(args.engagementTypes || ["reactions", "comments"])}, limit=${args.limit || "default"}`,
+        );
+        const response = await axios.post(
+          `${PRECEPT_API_URL}/v1/leads/post-engagers`,
+          args,
+          { headers: getHeaders() },
+        );
+        console.log(
+          `[Tool] precept_get_post_engagers succeeded. jobId=${response.data?.enrichment_id || "none"}`,
+        );
+        return formatResponse(response.data);
+      } catch (error) {
+        return formatError(error, "getting post engagers");
       }
     },
   );
@@ -921,7 +998,7 @@ export function registerAllTools(
         "Retrieve detailed insights and enrichments for a list of specific companies. " +
         "Provide companies by website URL or LinkedIn URL, and optionally specify enrichments like decision makers, technology stack, revenue, funding, employee counts, and department ratios. " +
         "You can also ask custom natural language queries about each company (e.g. 'What CRM do they use?'). " +
-        "Uses credits (from 1 per company, more per enrichment); precept_check_credits shows the balance. " +
+        "Uses credits (from 0.5 per company, more per enrichment); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so.",
       inputSchema: z.object({
         companies: z
@@ -1005,7 +1082,7 @@ export function registerAllTools(
       description:
         "Search for companies using natural language queries and optionally enrich them with insights, decision makers, or custom queries. " +
         "Examples: 'SaaS companies in London with 50-200 employees', 'Y Combinator startups in fintech', 'AI companies in Berlin'. " +
-        "Returns 30 companies by default; pass limit for more. Uses credits (from 1 per company, more per enrichment); precept_check_credits shows the balance. " +
+        "Returns 30 companies by default; pass limit for more. Uses credits (from 0.5 per company, more per enrichment); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table.",
       inputSchema: z.object({
@@ -1070,7 +1147,7 @@ export function registerAllTools(
       title: "Get Job Status",
       description:
         "Check the status and retrieve results of any Precept enrichment or search job. " +
-        "All Precept tools (search leads, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
+        "All Precept tools (search leads, post search, post engagers, enrich leads, company insights, search companies) are asynchronous and return an enrichment_id (jobId). " +
         "Returns status 'pending', 'processing' or 'in_progress' with progress info while running, 'completed' with the full results, or 'failed' with error details. " +
         "Jobs can take up to about 10 minutes. Checking every ~4 seconds for up to about 150 checks gives the best experience, with a brief progress update to the user every minute or so. " +
         "If a job is still running after that, it's usually still working: share the jobId so the user can check back later.",
