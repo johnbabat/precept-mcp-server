@@ -604,7 +604,7 @@ export function registerAllTools(
           })
           .optional()
           .describe(
-            "Optional LinkedIn activity signal for filtering persona search. Finds leads matching your query who recently engaged with relevant posts. Adds +5 credits per lead. (For discovering leads directly from post authors matching keywords without a persona query, use precept_get_leads_from_post_search).",
+            "Optional LinkedIn activity signal for filtering persona search. Finds leads matching your query who recently engaged with relevant posts. Adds +0.5 credits per lead. (For discovering leads directly from post authors matching keywords without a persona query, use precept_get_leads_from_post_search).",
           ),
         webhookUrl: z
           .string()
@@ -662,7 +662,7 @@ export function registerAllTools(
         "Results come back in relevance order by default; pass sortBy 'likes' or 'comments' to get the most-engaged posts instead (Precept selects the top posts by that metric from a larger candidate pool, then returns them in descending order). " +
         "Results depend heavily on the timeframe (past 24 hours, week or month), so if the user hasn't said which, it's worth asking. " +
         "Short keywords of 1 to 3 words (e.g. ['SEO problem', 'struggling with SEO']) match far more posts than long sentences. " +
-        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 5.5 per lead); precept_check_credits shows the balance. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 1.0 per lead); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({

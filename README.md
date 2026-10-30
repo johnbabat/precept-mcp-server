@@ -237,7 +237,7 @@ Precept API uses a credit-based model for data operations:
 | **Company Tech Stack** | `2.0 credits` / company |
 | **Company Revenue / Funding** | `5.0 credits` / company |
 | **Job Posting Subscription Monitoring** | `0 credits` for search; `0.5 credits` / discovered decision maker |
-| **Post Activity Filter** | `+5 credits` / lead |
+| **Post Activity Filter** | `+0.5 credits` / lead |
 
 *Full documentation on credit policies is available at [docs.preceptai.co.uk](https://docs.preceptai.co.uk/essentials/credits).*
 

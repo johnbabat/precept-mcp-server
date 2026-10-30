@@ -114,10 +114,10 @@ This is reference information about how Precept's tools work and what they cost.
   - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
   - Default / Both (\`emails\` + \`phones\`): \`+11 credits / lead\`
-- **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+5 credits / lead\` (finds people matching your query who recently engaged with post topics)
+- **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+0.5 credits / lead\` (finds people matching your query who recently engaged with post topics)
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 5)
+  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 0.5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
@@ -131,14 +131,14 @@ This is reference information about how Precept's tools work and what they cost.
 - **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
 - **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
 - **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
-- **Post Search Activity Signal**: \`+5.0 credits / lead\`
+- **Post activity**: \`+0.5 credits / lead\` (so a post search lead costs 1.0 credits before insights or contact details)
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
   - Phones only: \`+10 credits / lead\`
   - Default / Both: \`+11 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 5.0 + contactCost (0, 1, 10, or 11)
+  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 0.5 + contactCost (0, 1, 10, or 11)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
