@@ -27,6 +27,9 @@ This is reference information about how Precept's tools work and what they cost.
 ### LinkedIn post search timeframe
 - \`precept_get_leads_from_post_search\` results depend heavily on the timeframe (past 24 hours, week or month). If the user hasn't specified one, it's worth asking.
 
+### What a job cost
+- Completed lead jobs include \`cost.credits\` and a \`cost.breakdown\` listing each charge (leads, insights, posts, emails, phones) with its count and credits. Sharing it helps the user see what they paid for.
+
 ### Asynchronous jobs
 - \`precept_search_leads\`, \`precept_get_leads_from_post_search\`, \`precept_get_post_engagers\`, \`precept_enrich_leads\`, \`precept_search_companies\` and \`precept_get_company_insights\` run asynchronously and return an \`enrichment_id\` (jobId).
 - Use \`precept_get_job_status\` to check progress. Jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks gives the best experience. A short progress update to the user every minute or so (using \`progress.completed\` / \`progress.total\` when available) keeps them informed.
@@ -154,7 +157,8 @@ This is reference information about how Precept's tools work and what they cost.
 - Follow-ups: \`precept_enrich_leads\` for emails, phones and insights (pass the \`linkedin\` URLs), \`precept_linkedin_messages\` or \`precept_campaign_queue\` for outreach.
 
 ### 4. Lead Enrichment (\`precept_enrich_leads\`)
-- **Base AI Insights**: \`0.5 credits / lead\`
+- The user supplies the people, so there's no charge for finding them: only for the insights (always generated) and any contact details found.
+- **AI Insights**: \`0.5 credits / lead\`, lowered to \`0.2\` for leads where an email or phone is found.
 - **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
   - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
   - Channels: \`'email'\` (PIPE framework: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or \`'linkedin'\` (SHIP framework: Signal, Hypothesis, Intro, Personalisation).
@@ -165,7 +169,7 @@ This is reference information about how Precept's tools work and what they cost.
   - Default / Both: \`+11 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = 1.0 + contactCost (0, 1, 10, or 11)
+  Cost per lead = 0.5 (0.2 when a contact is found) + contactCost (0, 1, 10, or 11)
   Total Estimated Credits = Cost per lead * leadsCount
   \`\`\`
 

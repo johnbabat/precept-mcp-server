@@ -265,7 +265,24 @@ const jobStatusOutputSchema = z
           .number()
           .optional()
           .describe("Total credits billed for this job"),
+        breakdown: z
+          .array(
+            z
+              .object({
+                item: z
+                  .string()
+                  .describe(
+                    "What was charged, e.g. leads, leads_with_contact_found, insights, insights_with_contact_found, posts, post_activity, emails, phones",
+                  ),
+                count: z.number().describe("How many were charged"),
+                credits: z.number().describe("Credits for this item"),
+              })
+              .passthrough(),
+          )
+          .optional()
+          .describe("Itemised credits for lead jobs"),
       })
+      .passthrough()
       .optional()
       .describe("Credit cost summary"),
     phones_found: z
