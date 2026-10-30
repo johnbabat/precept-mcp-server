@@ -583,7 +583,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.5 credits per lead if true, 0.5 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.0 credits per lead if true, 0.5 credits if false. Default: false.",
           ),
         includeContactDetails: z
           .boolean()
@@ -723,7 +723,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.5 credits per lead if true, 0.5 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.0 credits per lead if true, 0.5 credits if false. Default: false.",
           ),
         includeContactDetails: z
           .boolean()
@@ -868,7 +868,7 @@ export function registerAllTools(
         "Enrich a list of specific contacts with verified contact details and AI-powered insights. " +
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
-        "Uses credits (from 1 per lead, more with contact details); precept_check_credits shows the balance. " +
+        "Uses credits (from 0.5 per lead, more with contact details); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so.",
       inputSchema: z.object({
         leads: z

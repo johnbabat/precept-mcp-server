@@ -226,8 +226,8 @@ Precept API uses a credit-based model for data operations:
 | Operation | Cost |
 | :--- | :--- |
 | **Lead Search** (basic profile) | `0.5 credits` / lead (`0.2` when an email or phone is found) |
-| **Lead Search with AI Insights** | `1.5 credits` / lead |
-| **Lead Enrichment** (existing contact) | `1.0 credit` / lead |
+| **Lead Search with AI Insights** | `1.0 credits` / lead |
+| **Lead Enrichment** (existing contact) | `0.5 credits` / lead |
 | **Verified Work Email** | `+1.0 credit` / lead |
 | **Verified Direct Phone Number** | `+10.0 credits` / lead |
 | **Both Email & Phone** | `+11.0 credits` / lead |

@@ -108,8 +108,8 @@ This is reference information about how Precept's tools work and what they cost.
 ### 1. Lead Search (\`precept_search_leads\`)
 - Searches contacts using natural language persona queries (e.g. titles, industries, locations).
 - **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
-- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
+- **With AI Insights (\`findInsights: true\`)**: \`1.0 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.0 → 0.7 with insights). Leads with nothing found keep the full base cost.
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
@@ -117,7 +117,7 @@ This is reference information about how Precept's tools work and what they cost.
 - **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+0.5 credits / lead\` (finds people matching your query who recently engaged with post topics)
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 0.5)
+  Cost per lead = baseCost (0.5 or 1.0; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 0.5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
@@ -129,8 +129,8 @@ This is reference information about how Precept's tools work and what they cost.
 - **Sorting**: \`sortBy\` is \`relevance\` (default), \`likes\` or \`comments\`. Use \`likes\`/\`comments\` when the user wants the most popular or most-discussed posts; Precept picks the top posts by that metric from a larger candidate pool and returns them in descending order. No extra cost.
 - **Returned data**: each result is a post author (lead) with profile fields (name, job title, company, domain, LinkedIn URL, location, country, connections, followers, \`enrich_email\`/\`enrich_phone\`) and a \`post\` object (\`url\`, \`content\` truncated to 2000 characters, \`posted_at\`, \`likes_count\`, \`comments_count\`). \`findInsights\` adds summary, top problems, strategic initiatives and public appearances.
 - **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.5 credits / lead\`
-- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.5 → 1.2 with insights). Leads with nothing found keep the full base cost.
+- **With AI Insights (\`findInsights: true\`)**: \`1.0 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.0 → 0.7 with insights). Leads with nothing found keep the full base cost.
 - **Post returned with each lead**: \`+0.2 credits / lead\` (so a post search lead costs 0.7 credits before insights or contact details)
 - **With Contact Details (\`includeContactDetails: true\`)**:
   - Emails only: \`+1 credit / lead\`
@@ -138,7 +138,7 @@ This is reference information about how Precept's tools work and what they cost.
   - Default / Both: \`+11 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.5; 0.3 less when a contact is found) + 0.2 + contactCost (0, 1, 10, or 11)
+  Cost per lead = baseCost (0.5 or 1.0; 0.3 less when a contact is found) + 0.2 + contactCost (0, 1, 10, or 11)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
@@ -154,7 +154,7 @@ This is reference information about how Precept's tools work and what they cost.
 - Follow-ups: \`precept_enrich_leads\` for emails, phones and insights (pass the \`linkedin\` URLs), \`precept_linkedin_messages\` or \`precept_campaign_queue\` for outreach.
 
 ### 4. Lead Enrichment (\`precept_enrich_leads\`)
-- **Base AI Insights**: \`1.0 credit / lead\`
+- **Base AI Insights**: \`0.5 credits / lead\`
 - **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
   - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
   - Channels: \`'email'\` (PIPE framework: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or \`'linkedin'\` (SHIP framework: Signal, Hypothesis, Intro, Personalisation).
