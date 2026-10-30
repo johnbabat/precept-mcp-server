@@ -740,7 +740,7 @@ export function registerAllTools(
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.0 credits per lead if true, 0.5 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.2 credits per lead if true, 0.7 credits if false (both include 0.2 for the post). Default: false.",
           ),
         includeContactDetails: z
           .boolean()

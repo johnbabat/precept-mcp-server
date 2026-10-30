@@ -158,7 +158,7 @@ This is reference information about how Precept's tools work and what they cost.
 
 ### 4. Lead Enrichment (\`precept_enrich_leads\`)
 - The user supplies the people, so there's no charge for finding them: only for the insights (always generated) and any contact details found.
-- **AI Insights**: \`0.5 credits / lead\`, lowered to \`0.2\` for leads where an email or phone is found.
+- **AI Insights**: \`0.5 credits / lead\`, lowered to \`0.2\` for leads where an email or phone is found. People we can't find come back without insights and aren't charged.
 - **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
   - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
   - Channels: \`'email'\` (PIPE framework: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or \`'linkedin'\` (SHIP framework: Signal, Hypothesis, Intro, Personalisation).
