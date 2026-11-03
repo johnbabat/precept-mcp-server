@@ -185,10 +185,10 @@ This is reference information about how Precept's tools work and what they cost.
       - If \`limitType: "per_role"\`: \`(departments.length + jobTitles.length) * decisionMakersLimit\` leads per company.
   - **All Employees (\`type: "all_employees"\`)**: \`0.5 credits / lead\`
   - **Department & Role Insights**:
-    - \`employee_count\`: \`2.0 credits / role / company\`
-    - \`department_ratio\`: \`4.0 credits / role / company\`
-    - \`employee_count_change\`: \`4.0 credits / role / company\`
-    - \`job_posting_insights\`: \`5.0 credits / role / company\`
+    - \`employee_count\`: \`0.5 credits / role / company\`
+    - \`department_ratio\`: \`0.5 credits / role / company\`
+    - \`employee_count_change\`: \`0.5 credits / role / company\`
+    - \`job_posting_insights\`: \`3.0 credits / role / company\`
   - **Company-level Insights**:
     - \`technology_stack\`: \`2.0 credits / company\`
     - \`revenue\`: \`5.0 credits / company\`
