@@ -236,6 +236,15 @@ This is reference information about how Precept's tools work and what they cost.
   2. **Role Title Changes**: Internal promotions or title switches.
   3. **LinkedIn Posts & Activity**: Detects new LinkedIn posts and retrieves the post content using CoreSignal activity objects.
 - **Actions**: \`action: 'create' | 'get' | 'update' | 'list' | 'delete'\`.
+- **Credit Billing**:
+  - **Every Run**: \`0.5 credits / lead\` checked, including the initial baseline run. Leads that can't be looked up aren't charged.
+  - **Signals**: an extra \`0.5 credits / lead\` for each lead with a job change, title change, relevant post or relevant comment on that run.
+  - **Adding or Replacing Leads**: \`0.5 credits / lead\` for its baseline.
+  - The balance must cover checking every lead, or the subscription stops with status \`insufficient_credits\`. \`latestResult.creditsCharged\` shows what the latest run cost.
+- **Formula**:
+  \`\`\`
+  Run Credits = (leadsChecked * 0.5) + (leadsWithSignals * 0.5)
+  \`\`\`
 - **Key Rules & Limits**:
   - **Cadence**: 7 to 30 days (default: 7).
   - **Organization Limit**: Each organization is strictly limited to a total of **150 subscribed leads** across all active subscriptions.

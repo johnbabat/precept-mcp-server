@@ -1836,6 +1836,7 @@ export function registerAllTools(
       title: "Lead Subscriptions",
       description:
         "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, new LinkedIn posts, and recent relevant comments. " +
+        "Uses credits: 0.5 per lead on every run including the baseline, plus 0.5 per lead with a signal on that run; adding or replacing leads costs 0.5 per lead. " +
         "Actions: " +
         "- 'create': Subscribe to monitor leads (up to 150 total leads org quota) with a 7-30 day cadence and optional company description for AI relevance evaluation. Baseline company/title is saved on initial run. " +
         "- 'get': Retrieve subscription details and latest detected signals (job/title changes, LinkedIn post content, relevant comments, and generated outreach message templates). " +
