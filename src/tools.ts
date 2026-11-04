@@ -192,7 +192,7 @@ const enrichmentsSchema = z
       .boolean()
       .optional()
       .describe(
-        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found (1 credit for email per person, 10 for phone per person, or 11 for both per person). Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
+        "Find verified email addresses and phone numbers for decision makers. Only applicable for decision_makers type. Adds contact enrichment cost per person found (3 credits for email per person, 10 for phone per person, or 13 for both per person). Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
       ),
     decisionMakersLimit: z
       .number()
@@ -568,7 +568,7 @@ export function registerAllTools(
       description:
         "Search and discover business leads/contacts using natural language queries. " +
         "Finds people matching your ideal customer profile and can enrich them with verified contact details and AI-powered insights. " +
-        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 0.5 per lead, more with insights or contact details); precept_check_credits shows the balance. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 1 per lead, more with insights or contact details); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
@@ -594,19 +594,19 @@ export function registerAllTools(
           .array(z.enum(["emails", "phones"]))
           .optional()
           .describe(
-            "Type of contact details to find. Options: 'emails' (+1 credit/lead), 'phones' (+10 credits/lead). Default: both (+11 credits/lead). Only used when includeContactDetails is true.",
+            "Type of contact details to find. Options: 'emails' (+3 credits/lead), 'phones' (+10 credits/lead). Default: both (+13 credits/lead). Only used when includeContactDetails is true.",
           ),
         findInsights: z
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.0 credits per lead if true, 0.5 credits if false. Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.4 credits per lead if true, 1 credit if false. Default: false.",
           ),
         includeContactDetails: z
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 140+ data providers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). Increases processing time significantly for phone numbers. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
+            "Whether to find and verify email addresses and phone numbers for each discovered lead. Enables waterfall search across 140+ data providers (+3 credits for email per lead, +10 for phone per lead, or +13 for both per lead). Increases processing time significantly for phone numbers. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         signal: z
           .object({
@@ -679,7 +679,7 @@ export function registerAllTools(
         "Results come back in relevance order by default; pass sortBy 'likes' or 'comments' to get the most-engaged posts instead (Precept selects the top posts by that metric from a larger candidate pool, then returns them in descending order). " +
         "Results depend heavily on the timeframe (past 24 hours, week or month), so if the user hasn't said which, it's worth asking. " +
         "Short keywords of 1 to 3 words (e.g. ['SEO problem', 'struggling with SEO']) match far more posts than long sentences. " +
-        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 0.7 per lead); precept_check_credits shows the balance. " +
+        "Returns 30 leads by default; pass limit for more (max 1000). Uses credits (from 1.2 per lead); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so. " +
         "Results work well as a table. Users often follow up by asking for more leads or for emails and phone numbers via precept_enrich_leads.",
       inputSchema: z.object({
@@ -734,19 +734,19 @@ export function registerAllTools(
           .array(z.enum(["emails", "phones"]))
           .optional()
           .describe(
-            "Type of contact details to find. Options: 'emails' (+1 credit/lead), 'phones' (+10 credits/lead). Default: both (+11 credits/lead). Only used when includeContactDetails is true.",
+            "Type of contact details to find. Options: 'emails' (+3 credits/lead), 'phones' (+10 credits/lead). Default: both (+13 credits/lead). Only used when includeContactDetails is true.",
           ),
         findInsights: z
           .boolean()
           .optional()
           .describe(
-            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.2 credits per lead if true, 0.7 credits if false (both include 0.2 for the post). Default: false.",
+            "Generate AI insights for each lead including professional summary, top problems, internal strategic initiatives, and public appearances. Costs 1.6 credits per lead if true, 1.2 credits if false (both include 0.2 for the post). Default: false.",
           ),
         includeContactDetails: z
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email addresses and phone numbers for discovered authors. Adds +1 credit for email, +10 for phone (or +11 for both) per person. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
+            "Whether to find and verify email addresses and phone numbers for discovered authors. Adds +3 credits for email, +10 for phone (or +13 for both) per person. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         webhookUrl: z
           .string()
@@ -810,7 +810,7 @@ export function registerAllTools(
         "Each result is one person, with their reaction and comment merged into one row: full_name, headline, linkedin (profile URL), user_name, profile_picture, profile_type ('individual' or 'organization'), engagement_types (['reaction'], ['comment'] or both), reaction_type (LinkedIn's names: LIKE = Like, PRAISE = Celebrate, APPRECIATION = Support, EMPATHY = Love, INTEREST = Insightful, ENTERTAINMENT = Funny; null if they only commented), comment_text, commented_at (ISO timestamp), comment_reply_count and is_comment_reply (comment fields are null for people who only reacted; LinkedIn doesn't expose when a reaction was made). " +
         "Commenters are listed first, then reactors. People who only reacted often have an ID-style profile URL (linkedin.com/in/ACoAA...) instead of a public username; it still opens their profile. " +
         "The completed job also includes summary counts (total_engagers, reactors, commenters) and the credits charged. " +
-        "Returns up to 100 people by default; pass limit for more (max 1000). Uses 0.5 credits per person returned (the same base rate as precept_search_leads); if the balance covers fewer people than the limit, fewer are returned. precept_check_credits shows the balance. " +
+        "Returns up to 100 people by default; pass limit for more (max 1000). Uses 1 credit per person returned (the same base rate as precept_search_leads); if the balance covers fewer people than the limit, fewer are returned. precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; these jobs usually finish within a minute, so checking every ~4 seconds works well. " +
         "Results work well as a table (Name, Headline, Engagement, Reaction, Comment, Commented At, LinkedIn). Users often follow up by enriching people with precept_enrich_leads, messaging them with precept_linkedin_messages, or queuing them into a campaign with precept_campaign_queue.",
       inputSchema: z.object({
@@ -885,7 +885,7 @@ export function registerAllTools(
         "Enrich a list of specific contacts with verified contact details and AI-powered insights. " +
         "Each lead can be identified by LinkedIn URL or a combination of first name, last name, and company name/domain. " +
         "Returns enriched data including verified emails, phone numbers, professional summary, top problems, strategic initiatives, and public appearances. " +
-        "Uses credits (from 0.5 per lead, more with contact details); precept_check_credits shows the balance. " +
+        "Uses credits (1.4 per lead with insights, 1 without, more with contact details); precept_check_credits shows the balance. " +
         "Runs asynchronously and returns an enrichment_id (jobId). Check progress with precept_get_job_status; jobs can take up to about 10 minutes, so checking every ~4 seconds for up to about 150 checks before treating a job as stalled gives the best experience, with a brief progress update to the user every minute or so.",
       inputSchema: z.object({
         leads: z
@@ -917,7 +917,7 @@ export function registerAllTools(
                 .array(z.enum(["emails", "phones"]))
                 .optional()
                 .describe(
-                  "Type of contact details to find for this lead. Options: 'emails' (+1 credit), 'phones' (+10 credits). Default: both (+11 credits).",
+                  "Type of contact details to find for this lead. Options: 'emails' (+3 credits), 'phones' (+10 credits). Default: both (+13 credits).",
                 ),
               customData: z
                 .record(z.string())
@@ -937,11 +937,17 @@ export function registerAllTools(
           .describe(
             "A readable name for this enrichment job, used for searching on the Precept dashboard.",
           ),
+        findInsights: z
+          .boolean()
+          .optional()
+          .describe(
+            "Generate AI insights for each lead. On by default at +0.4 credits per lead; set to false to skip them when only contact details are needed.",
+          ),
         includeContactDetails: z
           .boolean()
           .optional()
           .describe(
-            "Whether to find and verify email and phone numbers (+1 credit for email per lead, +10 for phone per lead, or +11 for both per lead). If true, results include enrich_email and enrich_phone fields. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
+            "Whether to find and verify email and phone numbers (+3 credits for email per lead, +10 for phone per lead, or +13 for both per lead). If true, results include enrich_email and enrich_phone fields. Contact details add significant cost, so enable this when the user asks for emails or phone numbers.",
           ),
         translate: z
           .boolean()
@@ -1836,7 +1842,7 @@ export function registerAllTools(
       title: "Lead Subscriptions",
       description:
         "Manage automated recurring lead signal subscriptions to monitor target people via LinkedIn URLs for job changes, role title changes, new LinkedIn posts, and recent relevant comments. " +
-        "Uses credits: 0.5 per lead on every run including the baseline, plus 0.5 per lead with a signal on that run; adding or replacing leads costs 0.5 per lead. " +
+        "Uses credits: 1 per lead on every run including the baseline, plus 0.4 per lead with a signal on that run; adding or replacing leads costs 1 per lead. " +
         "Actions: " +
         "- 'create': Subscribe to monitor leads (up to 150 total leads org quota) with a 7-30 day cadence and optional company description for AI relevance evaluation. Baseline company/title is saved on initial run. " +
         "- 'get': Retrieve subscription details and latest detected signals (job/title changes, LinkedIn post content, relevant comments, and generated outreach message templates). " +

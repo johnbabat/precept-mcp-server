@@ -31,7 +31,7 @@ Precept MCP Server exposes **14 specialized tools** organized across lead discov
 | :--- | :--- |
 | `precept_search_leads` | Search and discover business leads using natural language queries (e.g. *"Marketing heads at SaaS companies in California with 50-200 employees"*). Supports optional waterfall contact enrichment (verified emails and direct dials) and AI-generated prospect profiles. |
 | `precept_get_leads_from_post_search` | Discover high-intent prospects actively engaging (posting, commenting, reacting) with specific topics on LinkedIn over the past 24 hours, week, or month. |
-| `precept_get_post_engagers` | Get everyone who commented on or reacted to a specific LinkedIn post from its URL, with their reaction type, comment text and comment time. 0.5 credits per person returned. |
+| `precept_get_post_engagers` | Get everyone who commented on or reacted to a specific LinkedIn post from its URL, with their reaction type, comment text and comment time. 1 credit per person returned. |
 | `precept_enrich_leads` | Enrich a specific list of contacts using LinkedIn URLs or name + company details. Delivers verified emails, phone numbers, professional summary, top problems, and strategic initiatives. |
 
 ### 2. Company & Account Intelligence
@@ -225,18 +225,18 @@ Precept API uses a credit-based model for data operations:
 
 | Operation | Cost |
 | :--- | :--- |
-| **Lead Search** (basic profile) | `0.5 credits` / lead (`0.2` when an email or phone is found) |
-| **Lead Search with AI Insights** | `1.0 credits` / lead |
-| **Lead Enrichment** (existing contact, insights included) | `0.5 credits` / lead (`0.2` when an email or phone is found) |
-| **Verified Work Email** | `+1.0 credit` / lead |
+| **Lead Search** (basic profile) | `1 credit` / lead (`0.5` when an email or phone is found) |
+| **Lead Search with AI Insights** | `1.4 credits` / lead |
+| **Lead Enrichment** (existing contact, insights on by default) | `1.4 credits` / lead (`0.9` when an email or phone is found); `1` / `0.5` with insights off |
+| **Verified Work Email** | `+3.0 credits` / lead |
 | **Verified Direct Phone Number** | `+10.0 credits` / lead |
-| **Both Email & Phone** | `+11.0 credits` / lead |
+| **Both Email & Phone** | `+13.0 credits` / lead |
 | **Company Search / Base Insights** | `0.5 credits` / company |
 | **Custom AI Company Query** | `+0.2 credits` / query / company |
-| **Company Decision Makers** | `0.5 credits` / person |
+| **Company Decision Makers** | `1 credit` / person |
 | **Company Tech Stack** | `2.0 credits` / company |
 | **Company Revenue / Funding** | `5.0 credits` / company |
-| **Job Posting Subscription Monitoring** | `0 credits` for search; `0.5 credits` / discovered decision maker |
+| **Job Posting Subscription Monitoring** | `0 credits` for search; `1 credit` / discovered decision maker |
 | **Post Activity Filter** | `+0.5 credits` / lead |
 
 *Full documentation on credit policies is available at [docs.preceptai.co.uk](https://docs.preceptai.co.uk/essentials/credits).*

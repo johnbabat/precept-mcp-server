@@ -22,7 +22,7 @@ This is reference information about how Precept's tools work and what they cost.
 - After showing results, users often want more results or contact details. Mentioning those options is helpful.
 
 ### Contact details
-- Verified emails and phone numbers cost extra (+1 credit per email, +10 per phone, +11 for both per person) and make jobs take longer. Enable \`includeContactDetails\` when the user asks for contact details; otherwise they can be added later with \`precept_enrich_leads\`.
+- Verified emails and phone numbers cost extra (+3 credits per email, +10 per phone, +13 for both per person) and make jobs take longer. Enable \`includeContactDetails\` when the user asks for contact details; otherwise they can be added later with \`precept_enrich_leads\`.
 
 ### LinkedIn post search timeframe
 - \`precept_get_leads_from_post_search\` results depend heavily on the timeframe (past 24 hours, week or month). If the user hasn't specified one, it's worth asking.
@@ -110,17 +110,17 @@ This is reference information about how Precept's tools work and what they cost.
 
 ### 1. Lead Search (\`precept_search_leads\`)
 - Searches contacts using natural language persona queries (e.g. titles, industries, locations).
-- **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.0 credits / lead\`
-- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.0 → 0.7 with insights). Leads with nothing found keep the full base cost.
+- **Base Search**: \`1 credit / lead\` (if \`findInsights\` is false or omitted)
+- **With AI Insights (\`findInsights: true\`)**: \`1.4 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its 1 credit charge lowered to 0.5 (1.4 → 0.9 with insights). Leads with nothing found keep the full 1 credit.
 - **With Contact Details (\`includeContactDetails: true\`)**:
-  - Emails only (\`enrichType: ["emails"]\`): \`+1 credit / lead\`
+  - Emails only (\`enrichType: ["emails"]\`): \`+3 credits / lead\`
   - Phones only (\`enrichType: ["phones"]\`): \`+10 credits / lead\`
-  - Default / Both (\`emails\` + \`phones\`): \`+11 credits / lead\`
+  - Default / Both (\`emails\` + \`phones\`): \`+13 credits / lead\`
 - **With Activity Signal (\`signal: { type: "post_interaction", keywords: [...] }\`)**: \`+0.5 credits / lead\` (finds people matching your query who recently engaged with post topics)
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.0; 0.3 less when a contact is found) + contactCost (0, 1, 10, or 11) + signalCost (0 or 0.5)
+  Cost per lead = baseCost (1, or 0.5 when a contact is found) + insightsCost (0 or 0.4) + contactCost (0, 3, 10, or 13) + signalCost (0 or 0.5)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
@@ -131,45 +131,46 @@ This is reference information about how Precept's tools work and what they cost.
 - **Description**: a clear \`description\` parameter explaining what the user is searching for (e.g. "Founders discussing AI workflow automation or marketing challenges"). This provides context for the search.
 - **Sorting**: \`sortBy\` is \`relevance\` (default), \`likes\` or \`comments\`. Use \`likes\`/\`comments\` when the user wants the most popular or most-discussed posts; Precept picks the top posts by that metric from a larger candidate pool and returns them in descending order. No extra cost.
 - **Returned data**: each result is a post author (lead) with profile fields (name, job title, company, domain, LinkedIn URL, location, country, connections, followers, \`enrich_email\`/\`enrich_phone\`) and a \`post\` object (\`url\`, \`content\` truncated to 2000 characters, \`posted_at\`, \`likes_count\`, \`comments_count\`). \`findInsights\` adds summary, top problems, strategic initiatives and public appearances.
-- **Base Search**: \`0.5 credits / lead\` (if \`findInsights\` is false or omitted)
-- **With AI Insights (\`findInsights: true\`)**: \`1.0 credits / lead\`
-- **Contact discount**: a lead where an email or phone is actually found has its base cost lowered by 0.3 (0.5 → 0.2, or 1.0 → 0.7 with insights). Leads with nothing found keep the full base cost.
-- **Post returned with each lead**: \`+0.2 credits / lead\` (so a post search lead costs 0.7 credits before insights or contact details)
+- **Base Search**: \`1 credit / lead\` (if \`findInsights\` is false or omitted)
+- **With AI Insights (\`findInsights: true\`)**: \`1.4 credits / lead\`
+- **Contact discount**: a lead where an email or phone is actually found has its 1 credit charge lowered to 0.5 (1.4 → 0.9 with insights). Leads with nothing found keep the full 1 credit.
+- **Post returned with each lead**: \`+0.2 credits / lead\` (so a post search lead costs 1.2 credits before insights or contact details)
 - **With Contact Details (\`includeContactDetails: true\`)**:
-  - Emails only: \`+1 credit / lead\`
+  - Emails only: \`+3 credits / lead\`
   - Phones only: \`+10 credits / lead\`
-  - Default / Both: \`+11 credits / lead\`
+  - Default / Both: \`+13 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = baseCost (0.5 or 1.0; 0.3 less when a contact is found) + 0.2 + contactCost (0, 1, 10, or 11)
+  Cost per lead = baseCost (1, or 0.5 when a contact is found) + insightsCost (0 or 0.4) + 0.2 + contactCost (0, 3, 10, or 13)
   Total Estimated Credits = Cost per lead * limit
   \`\`\`
 
 ### 3. Post Commenters & Reactors (\`precept_get_post_engagers\`)
 - Returns the people who commented on and/or reacted to one specific LinkedIn post, given its URL (or lnkd.in link, activity URN or post ID). Use it when the user already has a post; use \`precept_get_leads_from_post_search\` to find posts by topic.
 - **Returned data**: one row per person with \`full_name\`, \`headline\`, \`linkedin\`, \`user_name\`, \`profile_picture\`, \`profile_type\`, \`engagement_types\` (\`reaction\`, \`comment\` or both), \`reaction_type\` (e.g. \`LIKE\`, \`PRAISE\`), \`comment_text\`, \`commented_at\`, \`comment_reply_count\` and \`is_comment_reply\`, plus \`summary\` counts and \`cost.credits\`. Commenters come first, then reactors. LinkedIn doesn't expose reaction times, so only comments have a timestamp.
-- **Base**: \`0.5 credits / person returned\` (same base rate as Lead Search). Only people actually returned are charged, and automatic credit capping applies.
+- **Base**: \`1 credit / person returned\` (same base rate as Lead Search). Only people actually returned are charged, and automatic credit capping applies.
 - **Formula**:
   \`\`\`
-  Total Estimated Credits = 0.5 * limit (maximum; actual = 0.5 * people returned)
+  Total Estimated Credits = 1 * limit (maximum; actual = 1 * people returned)
   \`\`\`
 - **Limits**: 100 people by default, up to 1000. \`includeCommentReplies\` adds people who replied to comments.
 - Follow-ups: \`precept_enrich_leads\` for emails, phones and insights (pass the \`linkedin\` URLs), \`precept_linkedin_messages\` or \`precept_campaign_queue\` for outreach.
 
 ### 4. Lead Enrichment (\`precept_enrich_leads\`)
-- The user supplies the people, so there's no charge for finding them: only for the insights (always generated) and any contact details found.
-- **AI Insights**: \`0.5 credits / lead\`, lowered to \`0.2\` for leads where an email or phone is found. People we can't find come back without insights and aren't charged.
+- The user supplies the people. Each person costs the same as Lead Search, with insights on by default, plus any contact details found.
+- **Base**: \`1 credit / lead\`, lowered to \`0.5\` for leads where an email or phone is found.
+- **AI Insights**: \`0.4 credits / lead\`, on by default. Pass \`findInsights: false\` when only contact details are needed. People we can't find come back without insights and aren't charged.
 - **Optional Message Generation (\`generateMessage: ["email", "linkedin"]\`)**:
   - Generates personalized, high-converting outreach message templates tailored to each lead using their job change, company problems, initiatives, and recent post content.
   - Channels: \`'email'\` (PIPE framework: Problem, Impact, Proof, Engage under 70 words, < 6 words subject line) and/or \`'linkedin'\` (SHIP framework: Signal, Hypothesis, Intro, Personalisation).
   - Returns \`email_message\`, \`email_subject\`, \`linkedin_message\`, and structured \`message_templates\`.
 - **With Contact Details (\`includeContactDetails: true\`)**:
-  - Emails only: \`+1 credit / lead\`
+  - Emails only: \`+3 credits / lead\`
   - Phones only: \`+10 credits / lead\`
-  - Default / Both: \`+11 credits / lead\`
+  - Default / Both: \`+13 credits / lead\`
 - **Formula**:
   \`\`\`
-  Cost per lead = 0.5 (0.2 when a contact is found) + contactCost (0, 1, 10, or 11)
+  Cost per lead = 1 (0.5 when a contact is found) + insightsCost (0.4, or 0 if turned off) + contactCost (0, 3, 10, or 13)
   Total Estimated Credits = Cost per lead * leadsCount
   \`\`\`
 
@@ -178,12 +179,12 @@ This is reference information about how Precept's tools work and what they cost.
 - **Custom AI Queries (\`queries: [...]\`)**: \`+0.2 credits / company\` (for the entire queries array)
 - **Enrichments**:
   - **Decision Makers (\`type: "decision_makers"\`)**:
-    - Without contact details: \`0.5 credits / lead\`
-    - With contact details (\`includeContactDetails: true\`): up to \`11.2 credits / lead\` (0.2 base + 1 email + 10 phone). Only decision makers with a found email or phone get the 0.2 base; the rest cost 0.5, and emails/phones are only charged when found.
+    - Without contact details: \`1 credit / lead\`
+    - With contact details (\`includeContactDetails: true\`): up to \`13.5 credits / lead\` (0.5 base + 3 email + 10 phone). Only decision makers with a found email or phone get the 0.5 base; the rest cost 0.5, and emails/phones are only charged when found.
     - Leads count calculation:
       - Default (\`limitType: "overall"\`): \`decisionMakersLimit\` (default 5) leads per company.
       - If \`limitType: "per_role"\`: \`(departments.length + jobTitles.length) * decisionMakersLimit\` leads per company.
-  - **All Employees (\`type: "all_employees"\`)**: \`0.5 credits / lead\`
+  - **All Employees (\`type: "all_employees"\`)**: \`1 credit / lead\`
   - **Department & Role Insights**:
     - \`employee_count\`: \`0.5 credits / role / company\`
     - \`department_ratio\`: \`0.5 credits / role / company\`
@@ -213,12 +214,12 @@ This is reference information about how Precept's tools work and what they cost.
 - **Actions**: \`action: 'create' | 'get' | 'update' | 'list' | 'delete'\`.
 - **Credit Billing per Run**:
   - **Job Posting Search**: \`0 credits\` (free / included in subscriptions; Precept monitors your companies or market queries without charging search credits).
-  - **Decision Makers**: \`0.5 credits / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
+  - **Decision Makers**: \`1 credit / lead\`. Precept automatically discovers up to 10 decision makers per job found (hard cap of 10; not user-configurable).
   - **Zero Wasted Credits (Deduplication)**: Previously returned decision makers are filtered out before profile retrieval and are NEVER re-fetched or charged on recurring runs.
 - **Formula**:
   \`\`\`
-  Decision Maker Cost = newDecisionMakersCount * 0.5
-  Estimated Run Credits = (estimated 2-5 decision makers per hiring company * 0.5)
+  Decision Maker Cost = newDecisionMakersCount * 1
+  Estimated Run Credits = (estimated 2-5 decision makers per hiring company * 1)
   \`\`\`
 - **Key Rules**:
   - \`query\` must be a natural language string (never an object or JSON AST).
@@ -237,9 +238,9 @@ This is reference information about how Precept's tools work and what they cost.
   3. **LinkedIn Posts & Activity**: Detects new LinkedIn posts and retrieves the post content using CoreSignal activity objects.
 - **Actions**: \`action: 'create' | 'get' | 'update' | 'list' | 'delete'\`.
 - **Credit Billing**:
-  - **Every Run**: \`0.5 credits / lead\` checked, including the initial baseline run. Leads that can't be looked up aren't charged.
-  - **Signals**: an extra \`0.5 credits / lead\` for each lead with a job change, title change, relevant post or relevant comment on that run.
-  - **Adding or Replacing Leads**: \`0.5 credits / lead\` for its baseline.
+  - **Every Run**: \`1 credit / lead\` checked, including the initial baseline run. Leads that can't be looked up aren't charged.
+  - **Signals**: an extra \`0.4 credits / lead\` for each lead with a job change, title change, relevant post or relevant comment on that run.
+  - **Adding or Replacing Leads**: \`1 credit / lead\` for its baseline.
   - The balance must cover checking every lead, or the subscription stops with status \`insufficient_credits\`. \`latestResult.creditsCharged\` shows what the latest run cost.
 - **Formula**:
   \`\`\`
