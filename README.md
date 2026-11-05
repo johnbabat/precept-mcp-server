@@ -232,7 +232,7 @@ Precept API uses a credit-based model for data operations:
 | **Verified Direct Phone Number** | `+10.0 credits` / lead |
 | **Both Email & Phone** | `+13.0 credits` / lead |
 | **Company Search / Base Insights** | `0.5 credits` / company |
-| **Custom AI Company Query** | `+0.2 credits` / query / company |
+| **Custom AI Company Query** | `+0.3 credits` / query / company |
 | **Company Decision Makers** | `1 credit` / person |
 | **Company Tech Stack** | `2.0 credits` / company |
 | **Company Revenue / Funding** | `5.0 credits` / company |

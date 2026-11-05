@@ -176,7 +176,7 @@ This is reference information about how Precept's tools work and what they cost.
 
 ### 5. Company Search (\`precept_search_companies\`)
 - **Base Search**: \`0.5 credits / company\`
-- **Custom AI Queries (\`queries: [...]\`)**: \`+0.2 credits / company\` (for the entire queries array)
+- **Custom AI Queries (\`queries: [...]\`)**: \`+0.3 credits / query / company\`
 - **Enrichments**:
   - **Decision Makers (\`type: "decision_makers"\`)**:
     - Without contact details: \`1 credit / lead\`

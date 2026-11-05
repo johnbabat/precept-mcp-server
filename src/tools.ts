@@ -1064,7 +1064,7 @@ export function registerAllTools(
           .array(z.string())
           .optional()
           .describe(
-            "Custom natural language questions to ask about each company (e.g. ['What CRM do they use?', 'What compliance certifications do they hold?']). Each query costs 0.2 credits per company. Responses returned in query_responses field.",
+            "Custom natural language questions to ask about each company (e.g. ['What CRM do they use?', 'What compliance certifications do they hold?']). Each query costs 0.3 credits per company. Responses returned in query_responses field.",
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
@@ -1130,7 +1130,7 @@ export function registerAllTools(
           .array(z.string())
           .optional()
           .describe(
-            "Custom natural language questions to ask about each discovered company. Each query costs 0.2 credits per company.",
+            "Custom natural language questions to ask about each discovered company. Each query costs 0.3 credits per company.",
           ),
       }),
       outputSchema: asyncJobInitOutputSchema,
